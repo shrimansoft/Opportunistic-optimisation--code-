@@ -87,7 +87,15 @@ class Robot():
                         itemShelfs.remove(self.shelf)
                         self.warehouse.itemBuffer[i] -= 1
                         order_count += 1
-            # for Order in 
+            def check_order(order):
+                if order.shelf_aloted == self.shelf:
+                    order.done(self.warehouse.time)
+                    self.warehouse.order_compleated.append(order)
+                    return False
+                else:
+                    return True
+
+            self.warehouse.order_buffer = list(filter(check_order,self.warehouse.order_buffer))
             print("stop>> \t", self.shelf, "order:\t", order_count)
             self.available = True
             self.shelf = None
@@ -109,7 +117,7 @@ class OrderItem():
 
     def done(self,time):
         self.done_time = time
-        self.delay = done_time - creation_time
+        self.delay = self.done_time - self.creation_time
 
 class Warehouse():
     def __init__(self):
@@ -118,6 +126,7 @@ class Warehouse():
         self.probabilities = np.random.dirichlet(np.ones(50), size=1)[0] # Assumption from past order distribution.
         self.itemBuffer = np.zeros(50)  # This is the order buffer. 
         self.order_buffer = []
+        self.order_compleated = []
         self.itemShelfsBuffer = [[]] * 50
         self.robots = [Robot(self), Robot(self)]
         self.distance = np.array([((i % 20) + (i // 20) + 2)
@@ -165,7 +174,8 @@ class Warehouse():
         return shelf, distence
 
     def order_step(self):
-        self.time =+1
+        self.time += 1
+        print("Time ",self.time)
         if (np.random.random() < 0.3):
             available = self.available()
             samples = self.sample()
@@ -226,6 +236,15 @@ def main():
             warehouse.robots[0].assigne(shelf_to_move,
                                         2 * distance[shelf_to_move])
         t += 1
+
+    # Average delay
+    delay = 0
+    order_count = 0
+    for order in warehouse.order_compleated:
+        print("order ",order.item_type,' Delay: ',order.delay)
+        delay += order.delay
+        order_count += 1
+    print("total order ",order_count," with average delay ",delay/order_count,".")
 
 def expectedTime():
     total_time = 0
