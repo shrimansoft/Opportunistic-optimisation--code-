@@ -1,0 +1,12 @@
+:PROPERTIES:
+:CATEGORY: code
+:END:
+
+
+* DONE Read the code once.
+CLOSED: [2024-11-18 Mon 00:35]
+* DONE make it run once. 
+CLOSED: [2024-11-18 Mon 00:35]
+
+* TODO Caculate the order delay.
+
