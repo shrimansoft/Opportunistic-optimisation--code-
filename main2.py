@@ -76,16 +76,16 @@ class Robot():
         self.available = False
         print("start>> \t", self.shelf, "distanc:\t", self.time_left)
 
-    def step(self, itemShelfsBuffer, itemBuffer):
+    def step(self):
         if self.time_left == 0 and (not self.available):
             order_count = 0
             print(">>> ", self.shelf)
             print()
-            for i, itemShelfs in enumerate(itemShelfsBuffer):
+            for i, itemShelfs in enumerate(self.warehouse.itemShelfsBuffer):
                 for itemShelf in itemShelfs:
                     if itemShelf == self.shelf:
                         itemShelfs.remove(self.shelf)
-                        itemBuffer[i] -= 1
+                        self.warehouse.itemBuffer[i] -= 1
                         order_count += 1
             # for Order in 
             print("stop>> \t", self.shelf, "order:\t", order_count)
@@ -208,8 +208,7 @@ def main():
 
         warehouse.order_step()
 
-        warehouse.robots[0].step(warehouse.itemShelfsBuffer,
-                                 warehouse.itemBuffer)
+        warehouse.robots[0].step()
 
         if len(itemShelfsBufferSet) == 0 and stock.sum() == 0:
             print(t)
