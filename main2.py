@@ -60,15 +60,16 @@ def shelf_plot(shelfs,itemShelfsBufferSet,frame_dir,frame):
 
     plt.close(fig)  # Close the figure to avoid display in notebooks
 
-
-
 class Robot():
 
-    def __init__(self,warehouse):
+    def __init__(self,warehouse,id):
         self.warehouse = warehouse
+        self.robot_id = id
         self.available = True
         self.time_left = 0  # time left in the task.
         self.shelf = None  # which self is above it
+        self.current_location = (0,0)
+        self.shelf_location = None
 
     def assigne(self, shelf, distance):
         self.shelf = shelf
@@ -77,7 +78,7 @@ class Robot():
         print("start>> \t", self.shelf, "distanc:\t", self.time_left)
 
     def step(self):
-        if self.time_left == 0 and (not self.available):
+        if self.time_left == 0 and (not self.available): #pickup station execution
             order_count = 0
             print(">>> ", self.shelf)
             print()
@@ -89,7 +90,7 @@ class Robot():
                         order_count += 1
             def check_order(order):
                 if order.shelf_aloted == self.shelf:
-                    order.done(self.warehouse.time)
+                    order.done(self.warehouse.time,self.robot_id)
                     self.warehouse.order_compleated.append(order)
                     return False
                 else:
@@ -102,22 +103,22 @@ class Robot():
         if self.time_left > 0:
             self.time_left -= 1
 
-
 class OrderItem():
     def __init__(self,item_type,creation_time,shelf):
         self.item_type = item_type
         self.creation_time = creation_time
         self.shelf_aloted = shelf
-        self.robot_assigned = None
+        self.robot_id = None
         self.done_time = None
         self.delay = None
 
     def shelf_aloted(self,shelf):
         self.shelf_aloted = shelf
 
-    def done(self,time):
+    def done(self,time,robot_id):
         self.done_time = time
         self.delay = self.done_time - self.creation_time
+        self.robot_id = robot_id
 
 class Warehouse():
     def __init__(self):
@@ -128,7 +129,9 @@ class Warehouse():
         self.order_buffer = []
         self.order_compleated = []
         self.itemShelfsBuffer = [[]] * 50
-        self.robots = [Robot(self), Robot(self)]
+        # self.robots = [Robot(self,1), Robot(self,2)]
+        self.robots = [Robot(self,1), Robot(self,2),Robot(self,3)]
+        # self.robots = [Robot(self,1)]
         self.distance = np.array([((i % 20) + (i // 20) + 2)
                                   for i in range(400)])
 
@@ -187,13 +190,24 @@ class Warehouse():
                 self.shelfs[shelf].remove(samples)
                 self.stock[samples] -= 1
 
+    def robot_assigner(self):
+        itemShelfsBufferSet = list(set().union(*self.itemShelfsBuffer))
+
+        if len(itemShelfsBufferSet) > 0:
+            for robot in self.robots:
+                if robot.available:
+                    # print(itemShelfsBufferSet)
+                    print("Total stock >> ", self.stock.sum())
+
+                    shelf_to_move = int(np.random.choice(itemShelfsBufferSet))
+
+                    robot.assigne(shelf_to_move,
+                                                2 * self.distance[shelf_to_move])
 
 def main():
 
     warehouse = Warehouse()
-    stock = warehouse.stock
     itemBuffer = warehouse.itemBuffer
-    itemShelfsBuffer = warehouse.itemShelfsBuffer
     shelfs = warehouse.shelfs
     probabilities = warehouse.probabilities
     # plt.barh(range(50),probabilities)
@@ -201,47 +215,36 @@ def main():
 
     available = warehouse.available
 
-    distance = warehouse.distance
-
-    robot_is_available = warehouse.robots[0].available
-    robot_time_left_in_the_task = warehouse.robots[0].time_left
-    robot_shelf = warehouse.robots[0].shelf
-    t = 0
-
 
     # while True:
-    for t in range(100):
+    for t in range(1000):
 
-        itemShelfsBufferSet = list(set().union(*itemShelfsBuffer))
+        itemShelfsBufferSet = list(set().union(*warehouse.itemShelfsBuffer))
 
         shelf_plot(warehouse.shelfs,itemShelfsBufferSet,'shelfs2',t)
 
         warehouse.order_step()
 
-        warehouse.robots[0].step()
+        for robot in warehouse.robots:
+            robot.step()
 
-        if len(itemShelfsBufferSet) == 0 and stock.sum() == 0:
+        if len(itemShelfsBufferSet) == 0 and warehouse.stock.sum() == 0:
             print(t)
             break
 
         # order exisution
-        itemShelfsBufferSet = list(set().union(*itemShelfsBuffer))
 
-        if len(itemShelfsBufferSet) > 0 and warehouse.robots[0].available:
-            # print(itemShelfsBufferSet)
-            print("Sthock>> ", stock.sum())
+        # order to robot assignment.
+        warehouse.robot_assigner()
 
-            shelf_to_move = int(np.random.choice(itemShelfsBufferSet))
-
-            warehouse.robots[0].assigne(shelf_to_move,
-                                        2 * distance[shelf_to_move])
         t += 1
+
 
     # Average delay
     delay = 0
     order_count = 0
     for order in warehouse.order_compleated:
-        print("order ",order.item_type,' Delay: ',order.delay)
+        print("order \t",order.item_type,' Delay: \t',order.delay,"robot: \t",order.robot_id)
         delay += order.delay
         order_count += 1
     print("total order ",order_count," with average delay ",delay/order_count,".")
