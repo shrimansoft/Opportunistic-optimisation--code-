@@ -1,0 +1,24 @@
+
+
+* How to make the mp4 from files.
+
+
+#+BEGIN_SRC shell
+  ffmpeg -framerate 10 -i shelfs2/frame_%04d.png -c:v libx264 -pix_fmt yuv420p -crf 23 warehouse_shelf_distribution4.mp4
+#+END_SRC
+
+* Assumtion
+
+| parameter                                    |                                           value |
+|----------------------------------------------+-------------------------------------------------|
+| No. Shelves                                  |                                             400 |
+| Pods in each Shelves                         |                                               6 |
+| Where house layout                           |                                           20x20 |
+| Distance from picking station                |                                             x+y |
+| speed or robot                               |                                           1 m/s |
+| size of each shelf (length x width x height) |                                      1m, 1m, 3m |
+| Item types                                   |                                              50 |
+| items in each type                           |                                              48 |
+| Past order history                           |                                      predefined |
+| Order creation                               | Sample from the past order history distribution |
+| Number of picking stations                   |                                               1 |
