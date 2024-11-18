@@ -64,8 +64,8 @@ def shelf_plot(shelfs,itemShelfsBufferSet,frame_dir,frame):
 
 class Robot():
 
-    def __init__(self):
-        self.warehouse
+    def __init__(self,warehouse):
+        self.warehouse = warehouse
         self.available = True
         self.time_left = 0  # time left in the task.
         self.shelf = None  # which self is above it
@@ -87,7 +87,7 @@ class Robot():
                         itemShelfs.remove(self.shelf)
                         itemBuffer[i] -= 1
                         order_count += 1
-            for Order in 
+            # for Order in 
             print("stop>> \t", self.shelf, "order:\t", order_count)
             self.available = True
             self.shelf = None
@@ -119,7 +119,7 @@ class Warehouse():
         self.itemBuffer = np.zeros(50)  # This is the order buffer. 
         self.order_buffer = []
         self.itemShelfsBuffer = [[]] * 50
-        self.robots = [Robot(), Robot()]
+        self.robots = [Robot(self), Robot(self)]
         self.distance = np.array([((i % 20) + (i // 20) + 2)
                                   for i in range(400)])
 
@@ -200,7 +200,7 @@ def main():
 
 
     # while True:
-    for t in range(10000):
+    for t in range(100):
 
         itemShelfsBufferSet = list(set().union(*itemShelfsBuffer))
 
