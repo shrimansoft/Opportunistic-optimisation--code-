@@ -8,57 +8,6 @@ import imageio.v2 as imageio  # For saving the GIF
 
 
 
-def shelf_plot(shelfs,itemShelfsBufferSet,frame_dir,frame):
-    # Define discrete colormap
-    cmap = mcolors.ListedColormap(['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'])
-    norm = mcolors.BoundaryNorm(np.arange(0,8), cmap.N)
-
-
-    shelf_buffer = np.array([(i in itemShelfsBufferSet) for i in range(400)])
-    shelf_buffer_layout = shelf_buffer.reshape(20,20)
-
-    shelf_counts = np.array([len(a) for a in shelfs])
-    # shelf_counts = shelfs.sum(axis=1)  # Sum along each shelf's items
-    warehouse_layout = shelf_counts.reshape(20, 20)  # Reshape to 20x20 for the warehouse
-
-    # Create the plot for this frame
-    fig  = plt.figure(figsize=(14, 8))
-    ax1 = plt.subplot(221)
-    ax2 = plt.subplot(222)
-    ax3 = plt.subplot(413)
-
-    img1 = ax1.imshow(warehouse_layout, cmap=cmap, norm=norm, interpolation='nearest')
-    img2 = ax2.imshow(shelf_buffer_layout,cmap=mcolors.ListedColormap(['#f7fbff','#08519c']), interpolation='nearest')
-
-
-    # Add color bar with discrete ticks
-    cbar = plt.colorbar(img1, ticks=np.arange(0, 7), ax=ax3)
-    cbar.set_label("Total items per shelf")
-
-    def degine(ax,title):
-        # Set up the x and y ticks to show 1 to 20
-        ax.set_xticks(np.arange(20))
-        ax.set_yticks(np.arange(20))
-        ax.set_xticklabels(np.arange(1, 21))
-        ax.set_yticklabels(np.arange(1, 21))
-
-        # Set labels and title
-        ax.set_title(title)
-        ax.set_xlabel("")
-        ax.set_ylabel("")
-
-
-        ax.grid(False)
-
-    degine(ax1,"Warehouse Shelf Distribution")
-    degine(ax2,"Oder buffer")
-    if not os.path.exists(frame_dir):
-        os.mkdir(frame_dir)
-
-    filename = os.path.join(frame_dir, f'frame_{frame:04d}.png')
-    plt.savefig(filename)
-
-    plt.close(fig)  # Close the figure to avoid display in notebooks
 
 class Robot():
 
@@ -245,6 +194,56 @@ class Warehouse():
 
                     robot.assigne(shelf_to_move, 2 * self.distance[shelf_to_move],(shelf_to_move%20 +1,shelf_to_move//20 +1))
 
+
+    def shelf_plot(self,frame_dir):
+        frame = self.time
+        shelfs = self.shelfs
+        itemShelfsBufferSet = list(set().union(*self.itemShelfsBuffer))
+        # Define discrete colormap
+        cmap = mcolors.ListedColormap(['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'])
+        norm = mcolors.BoundaryNorm(np.arange(0,8), cmap.N)
+
+        shelf_buffer = np.array([(i in itemShelfsBufferSet) for i in range(400)])
+        shelf_buffer_layout = shelf_buffer.reshape(20,20)
+
+        shelf_counts = np.array([len(a) for a in shelfs])
+        # shelf_counts = shelfs.sum(axis=1)  # Sum along each shelf's items
+        warehouse_layout = shelf_counts.reshape(20, 20)  # Reshape to 20x20 for the warehouse
+
+        # Create the plot for this frame
+        fig  = plt.figure(figsize=(14, 8))
+        ax1 = plt.subplot(221)
+        ax2 = plt.subplot(222)
+
+        img1 = ax1.imshow(warehouse_layout, cmap=cmap, norm=norm, interpolation='nearest')
+        img2 = ax2.imshow(shelf_buffer_layout,cmap=mcolors.ListedColormap(['#f7fbff','#08519c']), interpolation='nearest')
+
+        def degine(ax,title):
+            # Set up the x and y ticks to show 1 to 20
+            ax.set_xticks(np.arange(20))
+            ax.set_yticks(np.arange(20))
+            ax.set_xticklabels(np.arange(1, 21))
+            ax.set_yticklabels(np.arange(1, 21))
+
+            # Set labels and title
+            ax.set_title(title)
+            ax.set_xlabel("")
+            ax.set_ylabel("")
+
+
+            ax.grid(False)
+
+        degine(ax1,"Warehouse Shelf Distribution")
+        degine(ax2,"Oder buffer")
+
+        if not os.path.exists(frame_dir):
+            os.mkdir(frame_dir)
+
+        filename = os.path.join(frame_dir, f'frame_{frame:04d}.png')
+        plt.savefig(filename)
+
+        plt.close(fig)  # Close the figure to avoid display in notebooks
+
 def main():
 
     warehouse = Warehouse()
@@ -258,18 +257,17 @@ def main():
 
 
     # while True:
-    for t in range(1000):
+    for t in range(100):
 
-        itemShelfsBufferSet = list(set().union(*warehouse.itemShelfsBuffer))
 
-        shelf_plot(warehouse.shelfs,itemShelfsBufferSet,'shelfs2',t)
+        warehouse.shelf_plot('shelfs2')
 
         warehouse.order_step()
 
         for robot in warehouse.robots:
             robot.step()
 
-        if len(itemShelfsBufferSet) == 0 and warehouse.stock.sum() == 0:
+        if warehouse.stock.sum() == 0:
             print(t)
             break
 
