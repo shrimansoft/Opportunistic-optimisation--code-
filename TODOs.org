@@ -22,5 +22,14 @@ CLOSED: [2024-11-19 Tue 01:02]
 CLOSED: [2024-11-19 Tue 01:05]
 
 
-* TODO Multi Robot Situation.
-** 
+
+* DONE Multi Robot situation. 
+CLOSED: [2024-11-19 Tue 05:20]
+
+* TODO redefice nearest. 
+
+* TODO Item realocation
+** TODO What time to move.
+** TODO Where to move it.
+** TODO How to move it.
+
