@@ -8,7 +8,6 @@ import imageio.v2 as imageio  # For saving the GIF
 
 
 
-
 class Robot():
 
     def __init__(self,warehouse,id):
