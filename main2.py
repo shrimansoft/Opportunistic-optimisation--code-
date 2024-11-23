@@ -13,6 +13,7 @@ class Robot():
 
     def __init__(self,warehouse,id):
         self.warehouse = warehouse
+        self.pickingStation = self.warehouse.picking_stations[0]
         self.robot_id = id
         self.available = True
         self.mode = 0 # 0: available 1: goint to shelf 2: going to pickup station 3: retruning the shelf to its location.
@@ -108,12 +109,27 @@ class OrderItem():
         self.delay = self.done_time - self.creation_time
         self.robot_id = robot_id
 
+class PickingStation():
+    def __init__(self,warehouse,location):
+        self.warehouse = warehouse
+        self.location = location
+        self.buffer = []
+        self.buffer_size = 8
+
+    def buffer_available(self):
+        if len(self.buffer)<self.buffer_size:
+            return True
+        else:
+            return False
+
+
 class Warehouse():
     def __init__(self):
         self.time = 0
         self.stock = np.ones(50) * 48 # 50 types of items with 48 of each type.
         self.probabilities = np.random.dirichlet(np.ones(50), size=1)[0] # Assumption from past order distribution.
         self.itemBuffer = np.zeros(50)  # This is the order buffer. 
+        self.picking_stations = [PickingStation(self,(0,10))]
         self.order_buffer = []
         self.order_compleated = []
         self.itemShelfsBufferSet = set()
