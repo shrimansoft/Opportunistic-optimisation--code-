@@ -35,16 +35,16 @@ class Robot():
     def step(self):
         if self.current_location == self.target_location:# Move one step towards the target location
             if self.mode == 1: # (mode 1 -> 2)
-                self.target_location = (0,0) # picking station location.
+                self.target_location = self.pickingStation.location # picking station location.
                 self.mode = 2
             elif self.mode == 2: # (mode 2 -> 3)
                 self.target_location = self.shelf_location
                 order_count = 0
                 print(">>> ", self.shelf)
                 print()
-                for i, itemShelfs in enumerate(self.warehouse.itemShelfsBuffer):
-                    for itemShelf in itemShelfs:
-                        if itemShelf == self.shelf:
+                for i, itemShelfs in enumerate(self.warehouse.itemShelfsBuffer): # looping over types
+                    for itemShelf in itemShelfs: # looping over shelf assigned to a item type.
+                        if itemShelf == self.shelf: # if the shelf is current shelf
                             itemShelfs.remove(self.shelf)
                             self.warehouse.itemBuffer[i] -= 1
                             order_count += 1
