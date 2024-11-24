@@ -12,7 +12,7 @@ class WarehouseEnv(gym.Env):
     Custom Gymnasium Environment for the Warehouse Simulation
     """
 
-    def __init__(self, warehouse):
+    def __init__(self, warehouse: Warehouse):
         super(WarehouseEnv, self).__init__()
 
         # Initialize the warehouse from the existing warehouse class
