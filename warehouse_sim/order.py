@@ -6,7 +6,7 @@ class OrderItem():
         self.shelf_aloted = shelf
         self.robot_id = None
         self.done_time = None
-        self.delay = None
+        self.delay: int = 0
 
     def shelf_aloted(self, shelf):
         self.shelf_aloted = shelf

@@ -19,9 +19,8 @@ class Warehouse():
             50) * 48  # 50 types of items with 48 of each type.
         self.probabilities = np.random.dirichlet(
             np.ones(50), size=1)[0]  # Assumption from past order distribution.
-        self.itemBuffer = np.zeros(50)  # This is the order buffer.
         self.picking_stations = [PickingStation(self, (0, 10))]
-        self.order_buffer = []
+        self.order_buffer: List[OrderItem] = []
         self.order_compleated: List[OrderItem] = []
         self.itemShelfsBufferSet = set()
         self.itemShelfsBuffer = [[]] * 50
