@@ -28,7 +28,7 @@ class WarehouseEnv(gym.Env):
                                             dtype=np.int32)  # Shelves' state
 
         # The maximum number of steps per episode (time steps)
-        self.max_steps = 200
+        self.max_steps = 10
         self.current_step = 0
 
     def reset(self):
@@ -54,20 +54,12 @@ class WarehouseEnv(gym.Env):
         """
         self.current_step += 1
 
-        # Take action based on the robot's current state
-        for robot in self.warehouse.robots:
-            if robot.available:
-                if action == 0:  # Idle - Do nothing
-                    pass
-                elif action == 1:  # Go to Shelf
-                    # Assign a shelf to the robot to go to
-                    shelf = random.choice(self.warehouse.itemShelfsBufferSet)
-                    robot.assigne(shelf, self.warehouse.distance[shelf],
-                                  self.warehouse.shelfs[shelf])
-                elif action == 2:  # Go to Pickup Station
-                    robot.step()
-                elif action == 3:  # Return shelf
-                    robot.step()
+        # Take action
+
+
+
+        #ploting
+        self.warehouse.shelf_plot('data/frames')
 
         # Simulate the warehouse process (order creation and robot work)
         self.warehouse.order_step()
@@ -75,6 +67,8 @@ class WarehouseEnv(gym.Env):
         # Perform the robots' steps
         for robot in self.warehouse.robots:
             robot.step()
+
+        self.warehouse.robot_assigner()
 
         # Check if the warehouse is out of stock
         done = self.warehouse.stock.sum(
@@ -113,28 +107,21 @@ class WarehouseEnv(gym.Env):
 def main():
 
     warehouse = Warehouse()
-    itemBuffer = warehouse.itemBuffer
-    shelfs = warehouse.shelfs
-    probabilities = warehouse.probabilities
-    available = warehouse.available
+    env = WarehouseEnv(warehouse)  # Initialize the Gymnasium environment
 
-    # while True:
-    for t in range(200):
 
-        warehouse.shelf_plot('data/frames')
+    for episode in range(10):
+        obs = env.reset()
+        done = False
+        total_reward = 0
 
-        warehouse.order_step()
+        while not done:
+            action = env.action_space.sample()  # Random action
+            next_obs, reward, done, _ = env.step(action)
+            total_reward += reward
 
-        for robot in warehouse.robots:
-            robot.step()
+        print(f"Episode {episode + 1} finished with total reward: {total_reward}")
 
-        if warehouse.stock.sum() == 0:
-            print(t)
-            break
-
-        warehouse.robot_assigner()
-
-        t += 1
 
 
 def expectedTime():
