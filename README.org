@@ -19,6 +19,11 @@
   conda create --name <envname> --file requirements.txt
 #+END_SRC
 
+* REPL
+
+%load_ext autoreload
+%autoreload 2
+
 * Assumtion
 
 | parameter                                    |                                           value |
