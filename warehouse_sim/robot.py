@@ -39,15 +39,6 @@ class Robot():
                 self.target_location = self.shelf_location
                 order_count = 0
                 print(">>> ", self.shelf)
-                for i, itemShelfs in enumerate(
-                        self.warehouse.itemShelfsBuffer):  # looping over types
-
-                    # looping over shelf assigned to a item type.
-                    for itemShelf in itemShelfs:
-                        # if the shelf is current shelf
-                        if itemShelf == self.shelf:
-                            itemShelfs.remove(self.shelf)
-                            order_count += 1
 
                 def check_order(order):
                     if order.shelf_aloted == self.shelf:

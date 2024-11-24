@@ -15,16 +15,28 @@ class Warehouse():
 
     def __init__(self):
         self.time = 0
-        self.stock = np.ones(
-            50) * 48  # 50 types of items with 48 of each type.
         self.probabilities = np.random.dirichlet(
             np.ones(50), size=1)[0]  # Assumption from past order distribution.
-        self.picking_stations = [PickingStation(self, (0, 10))]
+        self.distance = np.array([((i % 20) + (i // 20) + 2)
+                                  for i in range(400)])
+
+
+        self.stock = np.ones(
+            50) * 48  # 50 types of items with 48 of each type.
+        items = np.repeat(np.arange(0, 50), 48)  # fill the wear house
+        np.random.shuffle(items)
+        shelfs = items.reshape(400, 6)
+        self.shelfs = shelfs.tolist()
+
+
+
         self.order_buffer: List[OrderItem] = []
         self.order_compleated: List[OrderItem] = []
         self.itemShelfsBufferSet = set()
-        self.itemShelfsBuffer = [[]] * 50
-        # self.robots = [Robot(self,1), Robot(self,2)]
+
+
+
+        self.picking_stations = [PickingStation(self, (0, 10))]
         self.robots = [
             Robot(self, 1),
             Robot(self, 2),
@@ -35,14 +47,7 @@ class Warehouse():
             # Robot(self,7), Robot(self,8),Robot(self,9),
         ]
         # self.robots = [Robot(self,1)]
-        self.distance = np.array([((i % 20) + (i // 20) + 2)
-                                  for i in range(400)])
 
-        items = np.repeat(np.arange(0, 50), 48)  # fill the wear house
-        np.random.shuffle(items)
-        shelfs = items.reshape(400, 6)
-
-        self.shelfs = shelfs.tolist()
 
     def reset(self):
         self.time = 0
@@ -93,7 +98,6 @@ class Warehouse():
             samples = self.sample()
             if available[samples]:
                 shelf, distence = self.nearestShelf(samples)
-                self.itemShelfsBuffer[samples].append(shelf)
                 self.itemShelfsBufferSet.add(shelf)
                 self.order_buffer.append(OrderItem(samples, self.time, shelf))
                 self.shelfs[shelf].remove(samples)
