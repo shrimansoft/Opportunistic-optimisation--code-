@@ -47,7 +47,6 @@ class Robot():
                         # if the shelf is current shelf
                         if itemShelf == self.shelf:
                             itemShelfs.remove(self.shelf)
-                            self.warehouse.itemBuffer[i] -= 1
                             order_count += 1
 
                 def check_order(order):

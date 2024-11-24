@@ -92,7 +92,6 @@ class Warehouse():
             available = self.available()
             samples = self.sample()
             if available[samples]:
-                self.itemBuffer[samples] += 1
                 shelf, distence = self.nearestShelf(samples)
                 self.itemShelfsBuffer[samples].append(shelf)
                 self.itemShelfsBufferSet.add(shelf)
