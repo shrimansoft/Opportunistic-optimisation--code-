@@ -22,11 +22,11 @@ class Robot():
         self.shelf = shelf
         self.shelf_location = shelf_location
         self.target_location = shelf_location
-        print("Assignment id done \t", self.current_location, '\t',
-              self.target_location)
+        # print("Assignment id done \t", self.current_location, '\t',
+        #       self.target_location)
         self.time_left = distance
         self.available = False
-        print("start>> \t", self.shelf, "distanc:\t", self.time_left)
+        # print("start>> \t", self.shelf, "distanc:\t", self.time_left)
 
     def step(self):
         # Move one step towards the target location
@@ -39,7 +39,6 @@ class Robot():
                 self.target_location = self.shelf_location
                 order_count = 0
                 print(">>> ", self.shelf)
-                print()
                 for i, itemShelfs in enumerate(
                         self.warehouse.itemShelfsBuffer):  # looping over types
 
