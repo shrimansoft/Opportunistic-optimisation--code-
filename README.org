@@ -7,6 +7,18 @@
   ffmpeg -framerate 10 -i shelfs2/frame_%04d.png -c:v libx264 -pix_fmt yuv420p -crf 23 warehouse_shelf_distribution4.mp4
 #+END_SRC
 
+* How to freeze env
+[[https://stackoverflow.com/q/41249401][src]]
+
+#+BEGIN_SRC shell
+  conda list --export > requirements.txt
+#+END_SRC
+
+
+#+BEGIN_SRC shell
+  conda create --name <envname> --file requirements.txt
+#+END_SRC
+
 * Assumtion
 
 | parameter                                    |                                           value |
