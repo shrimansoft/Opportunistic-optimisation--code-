@@ -1,7 +1,7 @@
-import gym
+import gymnasium as gym
 import numpy as np
 import random
-from gym import spaces
+from gymnasium import spaces
 from collections import deque
 
 from warehouse_sim.warehouse import Warehouse
@@ -20,7 +20,7 @@ class WarehouseEnv(gym.Env):
         # Action: Robot can either go to pick a shelf or pick up an item (depending on its state)
         self.action_space = spaces.Discrete(4)  # Idle, Go to Shelf, Go to Pickup Station, Return Shelf
         self.observation_space = spaces.Box(low=0, high=1, shape=(400,), dtype=np.int32)  # Shelves' state
-        
+
         # The maximum number of steps per episode (time steps)
         self.max_steps = 200
         self.current_step = 0
@@ -105,9 +105,6 @@ def main():
     itemBuffer = warehouse.itemBuffer
     shelfs = warehouse.shelfs
     probabilities = warehouse.probabilities
-    # plt.barh(range(50),probabilities)
-    # plt.show()
-
     available = warehouse.available
 
 
@@ -126,9 +123,6 @@ def main():
             print(t)
             break
 
-        # order exisution
-
-        # order to robot assignment.
         warehouse.robot_assigner()
 
         t += 1
