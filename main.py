@@ -124,22 +124,6 @@ def main():
 
 
 
-def expectedTime():
-    total_time = 0
-    count = 0
-    total_prob = 0
-    for i in itemShelfsBufferSet:
-        dist = distance[i]
-        shelf = shelfs[i]
-
-        for item in shelf:
-            prob = probabilities[item]
-            time = prob * dist  # we are assuming unit speed.
-            count += 1
-            total_prob += prob
-            total_time += time
-            # print(dist)
-    return total_time / total_prob
 
 
 if __name__ == "__main__":
