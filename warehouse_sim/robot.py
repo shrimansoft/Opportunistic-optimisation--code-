@@ -1,8 +1,12 @@
+from warehouse_sim.warehouse import Warehouse
+from warehouse_sim.picking_station import PickingStation
+import numpy as np
+
 class Robot():
 
     def __init__(self, warehouse, id):
-        self.warehouse = warehouse
-        self.pickingStation = self.warehouse.picking_stations[0]
+        self.warehouse : Warehouse= warehouse
+        self.pickingStation: PickingStation = self.warehouse.picking_stations[0]
         self.robot_id = id
         self.available = True
         # Mode expanation
@@ -14,7 +18,8 @@ class Robot():
         self.time_left = 0  # time left in the task.
         self.shelf = None  # which self is above it
         self.current_location = (0, 0)
-        self.target_location = self.current_location
+        from typing import Tuple
+        self.target_location: Tuple[int, int] = self.current_location
         self.shelf_location = None
 
     def assigne(self, shelf, distance, shelf_location):  # (mode 0 -> 1)
@@ -39,6 +44,24 @@ class Robot():
                 self.target_location = self.shelf_location
                 order_count = 0
                 print(">>> ", self.shelf)
+
+                #Buffer to shelf random movements. 
+                if(np.random.random()<0.3):
+                    if (np.random.random() < 0.3):
+                        if(self.pickingStation.buffer_available()):
+                            item_to_move = np.random.choice(
+                                np.array(
+                                    self.warehouse.shelfs[self.shelf]),
+                                size=1).item()
+                            self.pickingStation.buffer.append(item_to_move)
+                    else:
+                        if(len(self.warehouse.shelfs[self.shelf]) < 6):
+                            item_to_move = np.random.choice(
+                                np.array(self.pickingStation.buffer),
+                                size=1).item()
+                            self.warehouse.shelfs[self.shelf].append(item_to_move)
+
+
 
                 def check_order(order):
                     if order.shelf_aloted == self.shelf:
@@ -85,3 +108,4 @@ class Robot():
                 y -= 1
 
             self.current_location = (x, y)
+

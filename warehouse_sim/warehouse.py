@@ -77,10 +77,7 @@ class Warehouse():
 
     def nearestShelf(self, n):
         availableInShelfs = list(map(bool, self.itemInShelfs(n)))
-        distence = arr = [
-            0 if i in self.itemShelfsBufferSet else self.distance[i]
-            for i in range(len(self.distance))
-        ]
+        distence = arr = [ 0 if i in self.itemShelfsBufferSet          for i in range(len(self.distance) ]
         filteredList = [
             (i, v)
             for i, (v, l) in enumerate(zip(self.distance, availableInShelfs))
@@ -111,7 +108,6 @@ class Warehouse():
             for robot in self.robots:
                 if robot.available:
                     # print(itemShelfsBufferSet)
-
                     if len(self.itemShelfsBufferSet) > 0:
                         shelf_to_move = self.itemShelfsBufferSet.pop()
                         # self.itemShelfsBufferSet.remove(shelf_to_move)

@@ -28,7 +28,7 @@ class WarehouseEnv(gym.Env):
                                             dtype=np.int32)  # Shelves' state
 
         # The maximum number of steps per episode (time steps)
-        self.max_steps = 10
+        self.max_steps = 500
         self.current_step = 0
 
     def reset(self):
@@ -55,7 +55,6 @@ class WarehouseEnv(gym.Env):
         self.current_step += 1
 
         # Take action
-
 
 
         #ploting
@@ -110,7 +109,7 @@ def main():
     env = WarehouseEnv(warehouse)  # Initialize the Gymnasium environment
 
 
-    for episode in range(10):
+    for episode in range(1):
         obs = env.reset()
         done = False
         total_reward = 0

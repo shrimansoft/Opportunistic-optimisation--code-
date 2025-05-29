@@ -1,3 +1,7 @@
 
 /shelfs
 *.mp4
+data
+shelfs2
+__pycache__
+TODOs.org
