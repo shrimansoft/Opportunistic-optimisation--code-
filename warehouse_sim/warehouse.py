@@ -1,40 +1,31 @@
 import numpy as np
-
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
-
-from warehouse_sim.picking_station import PickingStation
-from warehouse_sim.order import OrderItem
-from warehouse_sim.robot import Robot
 from typing import List, Dict
 
+from .picking_station import PickingStation
+from .order import OrderItem
+from .robot import Robot
 
-class Warehouse():
 
+class Warehouse:
     def __init__(self):
         self.time = 0
-        self.probabilities = np.random.dirichlet(
-            np.ones(50), size=1)[0]  # Assumption from past order distribution.
-        self.distance = np.array([((i % 20) + (i // 20) + 2)
-                                  for i in range(400)])
+        self.probabilities = np.random.dirichlet(np.ones(50), size=1)[
+            0
+        ]  # Assumption from past order distribution.
+        self.distance = np.array([((i % 20) + (i // 20) + 2) for i in range(400)])
 
-
-        self.stock = np.ones(
-            50) * 48  # 50 types of items with 48 of each type.
+        self.stock = np.ones(50) * 48  # 50 types of items with 48 of each type.
         items = np.repeat(np.arange(0, 50), 48)  # fill the wear house
         np.random.shuffle(items)
         shelfs = items.reshape(400, 6)
         self.shelfs = shelfs.tolist()
 
-
-
         self.order_buffer: List[OrderItem] = []
         self.order_compleated: List[OrderItem] = []
         self.itemShelfsBufferSet = set()
-
-
 
         self.picking_stations = [PickingStation(self, (0, 10))]
         self.robots = [
@@ -48,7 +39,6 @@ class Warehouse():
         ]
         # self.robots = [Robot(self,1)]
 
-
     def reset(self):
         self.time = 0
         # TODO and many other thing from __init__ when need to be reset.
@@ -59,9 +49,7 @@ class Warehouse():
         :returns: this will return a item from the self.probabili
 
         """
-        return int(
-            np.random.choice(np.arange(50), size=1,
-                             p=self.probabilities).item())
+        return int(np.random.choice(np.arange(50), size=1, p=self.probabilities).item())
 
     def available(self):
         return list(map(bool, self.stock))
@@ -77,20 +65,21 @@ class Warehouse():
 
     def nearestShelf(self, n):
         availableInShelfs = list(map(bool, self.itemInShelfs(n)))
-        distence = arr = [ 0 if i in self.itemShelfsBufferSet          for i in range(len(self.distance) ]
-        filteredList = [
-            (i, v)
-            for i, (v, l) in enumerate(zip(self.distance, availableInShelfs))
-            if l
+        distance = [
+            0 if i in self.itemShelfsBufferSet else self.distance[i]
+            for i in range(len(self.distance))
         ]
-        shelf, distence = min(filteredList, key=lambda x: x[1])
-        return shelf, distence
+        filteredList = [
+            (i, v) for i, (v, l) in enumerate(zip(distance, availableInShelfs)) if l
+        ]
+        shelf, distance = min(filteredList, key=lambda x: x[1])
+        return shelf, distance
 
     def order_step(self):
         self.time += 1
         if self.time % 1000 == 0:
             print("Total average_dealy: ", self.average_delay())
-        if (np.random.random() < 0.3):
+        if np.random.random() < 0.3:
             available = self.available()
             samples = self.sample()
             if available[samples]:
@@ -112,34 +101,43 @@ class Warehouse():
                         shelf_to_move = self.itemShelfsBufferSet.pop()
                         # self.itemShelfsBufferSet.remove(shelf_to_move)
                         robot.assigne(
-                            shelf_to_move, 2 * self.distance[shelf_to_move],
-                            (shelf_to_move % 20 + 1, shelf_to_move // 20 + 1))
+                            shelf_to_move,
+                            2 * self.distance[shelf_to_move],
+                            (shelf_to_move % 20 + 1, shelf_to_move // 20 + 1),
+                        )
 
     def shelf_plot(self, frame_dir):
         frame = self.time
         shelfs = self.shelfs
         itemShelfsBufferSet = self.itemShelfsBufferSet
         # Define discrete colormap
-        cmap = mcolors.ListedColormap([
-            '#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#3182bd',
-            '#08519c'
-        ])
+        cmap = mcolors.ListedColormap(
+            [
+                "#f7fbff",
+                "#deebf7",
+                "#c6dbef",
+                "#9ecae1",
+                "#6baed6",
+                "#3182bd",
+                "#08519c",
+            ]
+        )
         norm = mcolors.BoundaryNorm(np.arange(0, 8), cmap.N)
 
         shelf_counts = np.array([len(a) for a in shelfs])
         # shelf_counts = shelfs.sum(axis=1)  # Sum along each shelf's items
         warehouse_layout = shelf_counts.reshape(
-            20, 20)  # Reshape to 20x20 for the warehouse
+            20, 20
+        )  # Reshape to 20x20 for the warehouse
 
         # Create the plot for this frame
         fig = plt.figure(figsize=(14, 8))
         ax1 = plt.subplot(121)
         ax2 = plt.subplot(122)
 
-        img1 = ax1.imshow(warehouse_layout,
-                          cmap=cmap,
-                          norm=norm,
-                          interpolation='nearest')
+        img1 = ax1.imshow(
+            warehouse_layout, cmap=cmap, norm=norm, interpolation="nearest"
+        )
 
         # Plot robot locations
 
@@ -152,58 +150,65 @@ class Warehouse():
 
             # Define color based on robot mode
             if robot.mode == 0:
-                robot_color = 'green'  # Idle mode (available)
+                robot_color = "green"  # Idle mode (available)
             elif robot.mode == 1:
-                robot_color = 'blue'  # Going to pick shelf
+                robot_color = "blue"  # Going to pick shelf
             elif robot.mode == 2:
-                robot_color = 'orange'  # Going to pickup station
+                robot_color = "orange"  # Going to pickup station
             elif robot.mode == 3:
-                robot_color = 'red'  # Returning the shelf
+                robot_color = "red"  # Returning the shelf
 
             if robot.shelf_location is not None:
                 shelf_y, shelf_x = robot.shelf_location
-                ax2.text(shelf_y - 1,
-                         shelf_x - 1,
-                         f'{robot.robot_id}',
-                         color='white',
-                         fontsize=5,
-                         ha='center',
-                         va='center')
-                ax2.plot(shelf_y - 1,
-                         shelf_x - 1,
-                         'D',
-                         markersize=8,
-                         color='#08519c')  # Circle marker for robot
+                ax2.text(
+                    shelf_y - 1,
+                    shelf_x - 1,
+                    f"{robot.robot_id}",
+                    color="white",
+                    fontsize=5,
+                    ha="center",
+                    va="center",
+                )
+                ax2.plot(
+                    shelf_y - 1, shelf_x - 1, "D", markersize=8, color="#08519c"
+                )  # Circle marker for robot
 
             # Plot robot's current location with the appropriate color
-            ax1.plot(robot_y, robot_x, 'o', markersize=8,
-                     color=robot_color)  # Circle marker for robot
-            ax2.plot(robot_y, robot_x, 'o', markersize=8,
-                     color=robot_color)  # Circle marker for robot
+            ax1.plot(
+                robot_y, robot_x, "o", markersize=8, color=robot_color
+            )  # Circle marker for robot
+            ax2.plot(
+                robot_y, robot_x, "o", markersize=8, color=robot_color
+            )  # Circle marker for robot
 
             # Display robot ID and mode at the robot's position
-            ax1.text(robot_y,
-                     robot_x,
-                     f'{robot.robot_id}',
-                     color='white',
-                     fontsize=5,
-                     ha='center',
-                     va='center')
-            ax2.text(robot_y,
-                     robot_x,
-                     f'{robot.robot_id}',
-                     color='white',
-                     fontsize=5,
-                     ha='center',
-                     va='center')
+            ax1.text(
+                robot_y,
+                robot_x,
+                f"{robot.robot_id}",
+                color="white",
+                fontsize=5,
+                ha="center",
+                va="center",
+            )
+            ax2.text(
+                robot_y,
+                robot_x,
+                f"{robot.robot_id}",
+                color="white",
+                fontsize=5,
+                ha="center",
+                va="center",
+            )
 
-        shelf_buffer = np.array([(i in itemShelfsBufferSet)
-                                 for i in range(400)])
+        shelf_buffer = np.array([(i in itemShelfsBufferSet) for i in range(400)])
         shelf_buffer_layout = shelf_buffer.reshape(20, 20)
 
-        img2 = ax2.imshow(shelf_buffer_layout,
-                          cmap=mcolors.ListedColormap(['#f7fbff', '#08519c']),
-                          interpolation='nearest')
+        img2 = ax2.imshow(
+            shelf_buffer_layout,
+            cmap=mcolors.ListedColormap(["#f7fbff", "#08519c"]),
+            interpolation="nearest",
+        )
 
         def degine(ax, title):
             # Set up the x and y ticks to show 1 to 20
@@ -234,7 +239,8 @@ class Warehouse():
         for robot in self.robots:
             if robot.shelf:
                 robot_shelf_info.append(
-                    f"R{robot.robot_id} carrying Shelf {robot.shelf}")
+                    f"R{robot.robot_id} carrying Shelf {robot.shelf}"
+                )
             else:
                 robot_shelf_info.append(f"R{robot.robot_id} idle")
 
@@ -246,26 +252,29 @@ class Warehouse():
             0.5,
             -0.1,
             f"Total Stock: {total_stock} | Orders in Progress: {total_orders} | Completed Orders: {completed_orders}",
-            ha='center',
-            va='top',
+            ha="center",
+            va="top",
             transform=ax1.transAxes,
             fontsize=12,
-            color='black',
-            weight='bold')
+            color="black",
+            weight="bold",
+        )
 
-        ax1.text(0.5,
-                 -0.2,
-                 robot_shelf_text,
-                 ha='center',
-                 va='top',
-                 transform=ax1.transAxes,
-                 fontsize=10,
-                 color='black')
+        ax1.text(
+            0.5,
+            -0.2,
+            robot_shelf_text,
+            ha="center",
+            va="top",
+            transform=ax1.transAxes,
+            fontsize=10,
+            color="black",
+        )
 
         if not os.path.exists(frame_dir):
             os.mkdir(frame_dir)
 
-        filename = os.path.join(frame_dir, f'frame_{frame:04d}.png')
+        filename = os.path.join(frame_dir, f"frame_{frame:04d}.png")
         plt.savefig(filename)
 
         plt.close(fig)  # Close the figure to avoid display in notebooks

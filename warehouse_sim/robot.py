@@ -1,12 +1,15 @@
-from warehouse_sim.warehouse import Warehouse
-from warehouse_sim.picking_station import PickingStation
+from typing import Tuple, TYPE_CHECKING
 import numpy as np
 
-class Robot():
+if TYPE_CHECKING:
+    from .warehouse import Warehouse
+    from .picking_station import PickingStation
 
-    def __init__(self, warehouse, id):
-        self.warehouse : Warehouse= warehouse
-        self.pickingStation: PickingStation = self.warehouse.picking_stations[0]
+
+class Robot:
+    def __init__(self, warehouse: "Warehouse", id: int):
+        self.warehouse = warehouse
+        self.pickingStation = self.warehouse.picking_stations[0]
         self.robot_id = id
         self.available = True
         # Mode expanation
@@ -18,7 +21,6 @@ class Robot():
         self.time_left = 0  # time left in the task.
         self.shelf = None  # which self is above it
         self.current_location = (0, 0)
-        from typing import Tuple
         self.target_location: Tuple[int, int] = self.current_location
         self.shelf_location = None
 
@@ -45,23 +47,26 @@ class Robot():
                 order_count = 0
                 print(">>> ", self.shelf)
 
-                #Buffer to shelf random movements. 
-                if(np.random.random()<0.3):
-                    if (np.random.random() < 0.3):
-                        if(self.pickingStation.buffer_available()):
+                # Buffer to shelf random movements.
+                if np.random.random() < 0.3:
+                    if np.random.random() < 0.3:
+                        if (
+                            self.pickingStation.buffer_available()
+                            and len(self.warehouse.shelfs[self.shelf]) > 0
+                        ):
                             item_to_move = np.random.choice(
-                                np.array(
-                                    self.warehouse.shelfs[self.shelf]),
-                                size=1).item()
+                                np.array(self.warehouse.shelfs[self.shelf]), size=1
+                            ).item()
                             self.pickingStation.buffer.append(item_to_move)
                     else:
-                        if(len(self.warehouse.shelfs[self.shelf]) < 6):
+                        if (
+                            len(self.warehouse.shelfs[self.shelf]) < 6
+                            and len(self.pickingStation.buffer) > 0
+                        ):
                             item_to_move = np.random.choice(
-                                np.array(self.pickingStation.buffer),
-                                size=1).item()
+                                np.array(self.pickingStation.buffer), size=1
+                            ).item()
                             self.warehouse.shelfs[self.shelf].append(item_to_move)
-
-
 
                 def check_order(order):
                     if order.shelf_aloted == self.shelf:
@@ -72,7 +77,8 @@ class Robot():
                         return True
 
                 self.warehouse.order_buffer = list(
-                    filter(check_order, self.warehouse.order_buffer))
+                    filter(check_order, self.warehouse.order_buffer)
+                )
                 print("stop>> \t", self.shelf, "order:\t", order_count)
                 self.mode = 3
 
@@ -87,8 +93,12 @@ class Robot():
 
         # Move one step towards the target location
         if self.current_location != self.target_location:
-            print("robot id \t", self.robot_id, "roblot current location \t",
-                  self.current_location)
+            print(
+                "robot id \t",
+                self.robot_id,
+                "roblot current location \t",
+                self.current_location,
+            )
 
             # (We assume that target_location is a tuple like (x, y)
             # and current_location is also a tuple (x, y))
@@ -108,4 +118,3 @@ class Robot():
                 y -= 1
 
             self.current_location = (x, y)
-

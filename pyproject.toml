@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "warehouse-optimization"
+version = "0.1.0"
+description = "Opportunistic optimization for warehouse robotics simulation using reinforcement learning"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "warehouse_sim"}]
+
+[tool.poetry.dependencies]
+python = "^3.8.1"
+gymnasium = "^0.29.0"
+numpy = "^1.24.0"
+matplotlib = "^3.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+black = "^23.0.0"
+flake8 = "^6.0.0"
+mypy = "^1.5.0"
+
+[tool.poetry.scripts]
+warehouse-sim = "warehouse_sim.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=warehouse_sim --cov-report=html --cov-report=term-missing"

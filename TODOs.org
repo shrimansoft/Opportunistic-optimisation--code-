@@ -26,10 +26,30 @@ CLOSED: [2024-11-19 Tue 01:05]
 * DONE Multi Robot situation. 
 CLOSED: [2024-11-19 Tue 05:20]
 
-* TODO redefice nearest. 
+* DONE redefice nearest.
+CLOSED: [2024-11-24 Sun 03:32]
 
-* TODO Item realocation
-** TODO What time to move.
-** TODO Where to move it.
-** TODO How to move it.
 
+* DONE Make Gym enviroment.
+CLOSED: [2024-11-24 Sun 07:10]
+
+
+* TODO Item realocation [2/5] [40%]
+We will fist make a Buffer. Then when ever a shelf come to piking station. We can pik extra item there which should be moved to the possible shelf buffer.
+** DONE Pickup station
+CLOSED: [2024-11-24 Sun 04:13]
+** DONE Make a buffer
+CLOSED: [2024-11-24 Sun 13:43]
+** Assumtions
+| parameter                      | value  |
+|--------------------------------+--------|
+| Item ove to buffer             | 1      |
+| Item move out from buffer      | 1      |
+| How to decide which to pick    | Random |
+| How decide where to place back | Random |
+** TODO You can move item to buffer and move them back to some shelf.
+** 
+
+
+
+* Order should be just order id. And we should Maintain the data base with know which ored have what. 

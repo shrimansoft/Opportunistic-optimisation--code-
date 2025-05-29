@@ -1,5 +1,4 @@
-class PickingStation():
-
+class PickingStation:
     def __init__(self, warehouse, location):
         self.warehouse = warehouse
         self.location = location
