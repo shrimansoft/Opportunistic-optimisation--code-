@@ -97,7 +97,7 @@ class WarehouseEnv(gym.Env):
         """
         Render the current state of the environment for visualization (useful for debugging)
         """
-        self.warehouse.shelf_plot(f"frames/{self.current_step}")
+        self.warehouse.shelf_plot(f"frames")
         print(
             f"Step {self.current_step}: Total Orders Completed: {len(self.warehouse.order_compleated)}"
         )
