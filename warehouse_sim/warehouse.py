@@ -10,14 +10,16 @@ from .robot import Robot
 
 
 class Warehouse:
+
     def __init__(self):
         self.time = 0
-        self.probabilities = np.random.dirichlet(np.ones(50), size=1)[
-            0
-        ]  # Assumption from past order distribution.
-        self.distance = np.array([((i % 20) + (i // 20) + 2) for i in range(400)])
+        self.probabilities = np.random.dirichlet(
+            np.ones(50), size=1)[0]  # Assumption from past order distribution.
+        self.distance = np.array([((i % 20) + (i // 20) + 2)
+                                  for i in range(400)])
 
-        self.stock = np.ones(50) * 48  # 50 types of items with 48 of each type.
+        self.stock = np.ones(
+            50) * 48  # 50 types of items with 48 of each type.
         items = np.repeat(np.arange(0, 50), 48)  # fill the wear house
         np.random.shuffle(items)
         shelfs = items.reshape(400, 6)
@@ -49,7 +51,9 @@ class Warehouse:
         :returns: this will return a item from the self.probabili
 
         """
-        return int(np.random.choice(np.arange(50), size=1, p=self.probabilities).item())
+        return int(
+            np.random.choice(np.arange(50), size=1,
+                             p=self.probabilities).item())
 
     def available(self):
         return list(map(bool, self.stock))
@@ -70,7 +74,8 @@ class Warehouse:
             for i in range(len(self.distance))
         ]
         filteredList = [
-            (i, v) for i, (v, l) in enumerate(zip(distance, availableInShelfs)) if l
+            (i, v) for i, (v, l) in enumerate(zip(distance, availableInShelfs))
+            if l
         ]
         shelf, distance = min(filteredList, key=lambda x: x[1])
         return shelf, distance
@@ -111,33 +116,31 @@ class Warehouse:
         shelfs = self.shelfs
         itemShelfsBufferSet = self.itemShelfsBufferSet
         # Define discrete colormap
-        cmap = mcolors.ListedColormap(
-            [
-                "#f7fbff",
-                "#deebf7",
-                "#c6dbef",
-                "#9ecae1",
-                "#6baed6",
-                "#3182bd",
-                "#08519c",
-            ]
-        )
+        cmap = mcolors.ListedColormap([
+            "#f7fbff",
+            "#deebf7",
+            "#c6dbef",
+            "#9ecae1",
+            "#6baed6",
+            "#3182bd",
+            "#08519c",
+        ])
         norm = mcolors.BoundaryNorm(np.arange(0, 8), cmap.N)
 
         shelf_counts = np.array([len(a) for a in shelfs])
         # shelf_counts = shelfs.sum(axis=1)  # Sum along each shelf's items
         warehouse_layout = shelf_counts.reshape(
-            20, 20
-        )  # Reshape to 20x20 for the warehouse
+            20, 20)  # Reshape to 20x20 for the warehouse
 
         # Create the plot for this frame
         fig = plt.figure(figsize=(14, 8))
         ax1 = plt.subplot(121)
         ax2 = plt.subplot(122)
 
-        img1 = ax1.imshow(
-            warehouse_layout, cmap=cmap, norm=norm, interpolation="nearest"
-        )
+        img1 = ax1.imshow(warehouse_layout,
+                          cmap=cmap,
+                          norm=norm,
+                          interpolation="nearest")
 
         # Plot robot locations
 
@@ -169,17 +172,17 @@ class Warehouse:
                     ha="center",
                     va="center",
                 )
-                ax2.plot(
-                    shelf_y - 1, shelf_x - 1, "D", markersize=8, color="#08519c"
-                )  # Circle marker for robot
+                ax2.plot(shelf_y - 1,
+                         shelf_x - 1,
+                         "D",
+                         markersize=8,
+                         color="#08519c")  # Circle marker for robot
 
             # Plot robot's current location with the appropriate color
-            ax1.plot(
-                robot_y, robot_x, "o", markersize=8, color=robot_color
-            )  # Circle marker for robot
-            ax2.plot(
-                robot_y, robot_x, "o", markersize=8, color=robot_color
-            )  # Circle marker for robot
+            ax1.plot(robot_y, robot_x, "o", markersize=8,
+                     color=robot_color)  # Circle marker for robot
+            ax2.plot(robot_y, robot_x, "o", markersize=8,
+                     color=robot_color)  # Circle marker for robot
 
             # Display robot ID and mode at the robot's position
             ax1.text(
@@ -201,7 +204,8 @@ class Warehouse:
                 va="center",
             )
 
-        shelf_buffer = np.array([(i in itemShelfsBufferSet) for i in range(400)])
+        shelf_buffer = np.array([(i in itemShelfsBufferSet)
+                                 for i in range(400)])
         shelf_buffer_layout = shelf_buffer.reshape(20, 20)
 
         img2 = ax2.imshow(
@@ -239,8 +243,7 @@ class Warehouse:
         for robot in self.robots:
             if robot.shelf:
                 robot_shelf_info.append(
-                    f"R{robot.robot_id} carrying Shelf {robot.shelf}"
-                )
+                    f"R{robot.robot_id} carrying Shelf {robot.shelf}")
             else:
                 robot_shelf_info.append(f"R{robot.robot_id} idle")
 
