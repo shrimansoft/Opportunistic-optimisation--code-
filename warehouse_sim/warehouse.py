@@ -29,7 +29,10 @@ class Warehouse:
         self.order_compleated: List[OrderItem] = []
         self.itemShelfsBufferSet = set()
 
-        self.picking_stations = [PickingStation(self, (0, 10))]
+        self.picking_stations = [
+            PickingStation(self, (0, 14)),
+            PickingStation(self, (0, 10))
+        ]
         self.robots = [
             Robot(self, 1),
             Robot(self, 2),
@@ -141,6 +144,46 @@ class Warehouse:
                           cmap=cmap,
                           norm=norm,
                           interpolation="nearest")
+
+        # Plot picking stations
+        for station_idx, station in enumerate(self.picking_stations):
+            station_y, station_x = station.location
+            station_x -= 1
+            station_y -= 1
+
+            # Plot picking station as a large square marker
+            ax1.plot(station_y,
+                     station_x,
+                     "s",
+                     markersize=12,
+                     color="purple",
+                     markeredgecolor="black",
+                     markeredgewidth=2)
+            ax2.plot(station_y,
+                     station_x,
+                     "s",
+                     markersize=12,
+                     color="purple",
+                     markeredgecolor="black",
+                     markeredgewidth=2)
+
+            # Add label for picking station with station number
+            ax1.text(station_y,
+                     station_x,
+                     f"{station_idx}",
+                     color="white",
+                     fontsize=8,
+                     ha="center",
+                     va="center",
+                     weight="bold")
+            ax2.text(station_y,
+                     station_x,
+                     f"{station_idx}",
+                     color="white",
+                     fontsize=8,
+                     ha="center",
+                     va="center",
+                     weight="bold")
 
         # Plot robot locations
 
