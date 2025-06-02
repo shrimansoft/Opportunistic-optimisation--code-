@@ -1,4 +1,8 @@
 class OrderItem:
+    '''
+    Note: Currently assumes one order per item, but this could be generalized in future updates.
+    '''
+
     def __init__(self, item_type, creation_time, shelf):
         self.item_type = item_type
         self.creation_time = creation_time
