@@ -115,6 +115,7 @@ class WarehouseEnv(gym.Env):
         print(
             f"Step {self.current_step}: Total Orders Completed: {len(self.warehouse.order_compleated)}"
         )
+        print(self.warehouse.picking_stations[0].buffer)
 
 
 def main():

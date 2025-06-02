@@ -47,26 +47,9 @@ class Robot:
                 order_count = 0
                 print(">>> ", self.shelf)
 
-                # Buffer to shelf random movements.
-                if np.random.random() < 0.3:
-                    if np.random.random() < 0.3:
-                        if (
-                            self.pickingStation.buffer_available()
-                            and len(self.warehouse.shelfs[self.shelf]) > 0
-                        ):
-                            item_to_move = np.random.choice(
-                                np.array(self.warehouse.shelfs[self.shelf]), size=1
-                            ).item()
-                            self.pickingStation.buffer.append(item_to_move)
-                    else:
-                        if (
-                            len(self.warehouse.shelfs[self.shelf]) < 6
-                            and len(self.pickingStation.buffer) > 0
-                        ):
-                            item_to_move = np.random.choice(
-                                np.array(self.pickingStation.buffer), size=1
-                            ).item()
-                            self.warehouse.shelfs[self.shelf].append(item_to_move)
+                # Use intelligent buffer update based on demand probabilities
+                # This replaces the previous random item movements
+                self.warehouse.buffer_update(self.shelf, self.pickingStation)
 
                 def check_order(order):
                     if order.shelf_aloted == self.shelf:

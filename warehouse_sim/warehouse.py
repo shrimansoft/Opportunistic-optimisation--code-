@@ -47,6 +47,28 @@ class Warehouse:
         ]
         # self.robots = [Robot(self,1)]
 
+
+
+    def buffer_update(self, shelf, picking_station: PickingStation):
+        """
+        Redistributes items between shelf and buffer based on demand probabilities.
+        Most demanded items go to buffer, rest to shelf  """
+        # Combine and sort items by demand probability (descending)
+        all_items = self.shelfs[shelf] + picking_station.buffer
+        if not all_items:
+            return
+        
+        sorted_items = sorted(all_items, key=lambda item: self.probabilities[item], reverse=True)
+        
+        # Clear and redistribute based on max buffer capacity
+        self.shelfs[shelf].clear()
+        picking_station.buffer.clear()
+        
+        max_capacity = picking_station.buffer_size
+        picking_station.buffer.extend(sorted_items[:max_capacity])
+        self.shelfs[shelf].extend(sorted_items[max_capacity:max_capacity*2])
+
+
     def reset(self):
         self.time = 0
         # TODO and many other thing from __init__ when need to be reset.
