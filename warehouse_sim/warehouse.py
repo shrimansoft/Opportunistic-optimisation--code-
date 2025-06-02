@@ -161,9 +161,12 @@ class Warehouse:
             20, 20)  # Reshape to 20x20 for the warehouse
 
         # Create the plot for this frame
-        fig = plt.figure(figsize=(14, 8))
+        fig = plt.figure(figsize=(16, 12))
         ax1 = plt.subplot(121)
         ax2 = plt.subplot(122)
+        
+        # Adjust subplot layout to make room for text
+        plt.subplots_adjust(bottom=0.35)
 
         img1 = ax1.imshow(warehouse_layout,
                           cmap=cmap,
@@ -176,19 +179,28 @@ class Warehouse:
             station_x -= 1
             station_y -= 1
 
+            # Color code picking station based on buffer fullness
+            buffer_ratio = len(station.buffer) / station.buffer_size
+            if buffer_ratio >= 0.8:
+                station_color = "red"  # Nearly full
+            elif buffer_ratio >= 0.5:
+                station_color = "orange"  # Half full
+            else:
+                station_color = "purple"  # Not crowded
+
             # Plot picking station as a large square marker
             ax1.plot(station_y,
                      station_x,
                      "s",
                      markersize=12,
-                     color="purple",
+                     color=station_color,
                      markeredgecolor="black",
                      markeredgewidth=2)
             ax2.plot(station_y,
                      station_x,
                      "s",
                      markersize=12,
-                     color="purple",
+                     color=station_color,
                      markeredgecolor="black",
                      markeredgewidth=2)
 
@@ -306,10 +318,21 @@ class Warehouse:
         total_orders = len(self.order_buffer)
         completed_orders = len(self.order_compleated)
 
+        # Picking station buffer status
+        buffer_info = []
+        for i, station in enumerate(self.picking_stations):
+            buffer_count = len(station.buffer)
+            buffer_capacity = station.buffer_size
+            buffer_str = f"PS{i}: {buffer_count}/{buffer_capacity} items"
+            if station.buffer:
+                # Show all items since buffer capacity is only 8
+                buffer_str += f" [{', '.join(map(str, station.buffer))}]"
+            buffer_info.append(buffer_str)
+
         # Shelf details for each robot
         robot_shelf_info = []
         for robot in self.robots:
-            if robot.shelf:
+            if robot.shelf is not None:
                 robot_shelf_info.append(
                     f"R{robot.robot_id} carrying Shelf {robot.shelf}")
             else:
@@ -317,29 +340,76 @@ class Warehouse:
 
         # Format text information
         robot_shelf_text = "\n".join(robot_shelf_info)
+        buffer_text = "\n".join(buffer_info)
 
-        # Place the details at the bottom of the plot
+        # Place the details at the bottom of the plot with better spacing
         ax1.text(
             0.5,
-            -0.1,
+            -0.08,
             f"Total Stock: {total_stock} | Orders in Progress: {total_orders} | Completed Orders: {completed_orders}",
             ha="center",
             va="top",
             transform=ax1.transAxes,
-            fontsize=12,
+            fontsize=11,
             color="black",
             weight="bold",
         )
 
+        # Split robot info into two columns to save space
+        mid_point = len(robot_shelf_info) // 2
+        left_robots = "\n".join(robot_shelf_info[:mid_point])
+        right_robots = "\n".join(robot_shelf_info[mid_point:])
+
         ax1.text(
-            0.5,
-            -0.2,
-            robot_shelf_text,
+            0.25,
+            -0.18,
+            left_robots,
             ha="center",
             va="top",
             transform=ax1.transAxes,
-            fontsize=10,
+            fontsize=9,
             color="black",
+        )
+
+        ax1.text(
+            0.75,
+            -0.18,
+            right_robots,
+            ha="center",
+            va="top",
+            transform=ax1.transAxes,
+            fontsize=9,
+            color="black",
+        )
+
+        # Add picking station buffer information with more space
+        ax1.text(
+            0.5,
+            -0.32,
+            f"Picking Station Buffers:\n{buffer_text}",
+            ha="center",
+            va="top",
+            transform=ax1.transAxes,
+            fontsize=9,
+            color="darkblue",
+            weight="bold",
+        )
+
+        # Add legend for robot colors and picking station colors
+        legend_text = (
+            "Legend: Robots: Green=Idle, Blue=Going to shelf, Orange=Going to pickup, Red=Returning shelf\n"
+            "Picking Stations: Purple=Low buffer, Orange=Half full, Red=Nearly full"
+        )
+        ax1.text(
+            0.5,
+            -0.45,
+            legend_text,
+            ha="center",
+            va="top",
+            transform=ax1.transAxes,
+            fontsize=8,
+            color="gray",
+            style="italic",
         )
 
         if not os.path.exists(frame_dir):
