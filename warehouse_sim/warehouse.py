@@ -11,11 +11,12 @@ from .robot import Robot
 
 class Warehouse:
 
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, buffer_enabled=True):
         if seed is not None:
             np.random.seed(seed)
         
         self.time = 0
+        self.buffer_enabled = buffer_enabled
         self.probabilities = np.random.dirichlet(
             np.ones(50), size=1)[0]  # Assumption from past order distribution.
         self.distance = np.array([((i % 20) + (i // 20) + 2)
@@ -33,8 +34,8 @@ class Warehouse:
         self.itemShelfsBufferSet = set()
 
         self.picking_stations = [
-            PickingStation(self, (0, 14)),
-            PickingStation(self, (0, 10))
+            PickingStation(self, (0, 14), buffer_enabled=self.buffer_enabled),
+            PickingStation(self, (0, 10), buffer_enabled=self.buffer_enabled)
         ]
         self.robots = [
             Robot(self, 1),
@@ -52,7 +53,12 @@ class Warehouse:
     def buffer_update(self, shelf, picking_station: PickingStation):
         """
         Redistributes items between shelf and buffer based on demand probabilities.
-        Most demanded items go to buffer, rest to shelf  """
+        Most demanded items go to buffer, rest to shelf. Only works if buffers are enabled."""
+        
+        # Skip buffer operations if buffers are disabled
+        if not self.buffer_enabled or not picking_station.buffer_enabled:
+            return
+            
         # Combine and sort items by demand probability (descending)
         all_items = self.shelfs[shelf] + picking_station.buffer
         if not all_items:
@@ -87,14 +93,16 @@ class Warehouse:
         # Check both shelf stock and picking station buffers
         availability = list(map(bool, self.stock))
         
-        # Also check if items are available in any picking station buffer
-        for i in range(len(availability)):
-            if not availability[i]:  # Only check buffers if item not available on shelves
-                # Check all picking stations for this item
-                for picking_station in self.picking_stations:
-                    if i in picking_station.buffer:
-                        availability[i] = True
-                        break
+        # Only check buffers if they are enabled
+        if self.buffer_enabled:
+            # Also check if items are available in any picking station buffer
+            for i in range(len(availability)):
+                if not availability[i]:  # Only check buffers if item not available on shelves
+                    # Check all picking stations for this item
+                    for picking_station in self.picking_stations:
+                        if i in picking_station.buffer:
+                            availability[i] = True
+                            break
         
         return availability
 
@@ -128,20 +136,21 @@ class Warehouse:
             available = self.available()
             samples = self.sample()
             if available[samples]:
-                # Check if the item is available in any picking station buffer
+                # Check if the item is available in any picking station buffer (only if buffers are enabled)
                 item_found_in_buffer = False
-                for station in self.picking_stations:
-                    if samples in station.buffer:
-                        # Item found in buffer - create order and fulfill immediately
-                        order = OrderItem(samples, self.time, None)  # No shelf needed
-                        order.done(self.time, None)  # Completed immediately, no robot needed
-                        self.order_compleated.append(order)
-                        station.buffer.remove(samples)
-                        self.stock[samples] -= 1
-                        item_found_in_buffer = True
-                        print(f"Order for item {samples} fulfilled immediately from picking station buffer")
-                        print("Total stock >> ", self.stock.sum())
-                        break
+                if self.buffer_enabled:
+                    for station in self.picking_stations:
+                        if samples in station.buffer:
+                            # Item found in buffer - create order and fulfill immediately
+                            order = OrderItem(samples, self.time, None)  # No shelf needed
+                            order.done(self.time, None)  # Completed immediately, no robot needed
+                            self.order_compleated.append(order)
+                            station.buffer.remove(samples)
+                            self.stock[samples] -= 1
+                            item_found_in_buffer = True
+                            print(f"Order for item {samples} fulfilled immediately from picking station buffer")
+                            print("Total stock >> ", self.stock.sum())
+                            break
                 
                 # If item not found in buffer, create regular order
                 if not item_found_in_buffer:
@@ -208,14 +217,19 @@ class Warehouse:
             station_x -= 1
             station_y -= 1
 
-            # Color code picking station based on buffer fullness
-            buffer_ratio = len(station.buffer) / station.buffer_size
-            if buffer_ratio >= 0.8:
-                station_color = "red"  # Nearly full
-            elif buffer_ratio >= 0.5:
-                station_color = "orange"  # Half full
+            # Color code picking station based on buffer fullness or disabled state
+            if not station.buffer_enabled:
+                station_color = "gray"  # Disabled buffer
+            elif station.buffer_size == 0:
+                station_color = "gray"  # No buffer capacity
             else:
-                station_color = "purple"  # Not crowded
+                buffer_ratio = len(station.buffer) / station.buffer_size if station.buffer_size > 0 else 0
+                if buffer_ratio >= 0.8:
+                    station_color = "red"  # Nearly full
+                elif buffer_ratio >= 0.5:
+                    station_color = "orange"  # Half full
+                else:
+                    station_color = "purple"  # Not crowded
 
             # Plot picking station as a large square marker
             ax1.plot(station_y,
@@ -350,12 +364,15 @@ class Warehouse:
         # Picking station buffer status
         buffer_info = []
         for i, station in enumerate(self.picking_stations):
-            buffer_count = len(station.buffer)
-            buffer_capacity = station.buffer_size
-            buffer_str = f"PS{i}: {buffer_count}/{buffer_capacity} items"
-            if station.buffer:
-                # Show all items since buffer capacity is only 8
-                buffer_str += f" [{', '.join(map(str, station.buffer))}]"
+            if not station.buffer_enabled:
+                buffer_str = f"PS{i}: DISABLED"
+            else:
+                buffer_count = len(station.buffer)
+                buffer_capacity = station.buffer_size
+                buffer_str = f"PS{i}: {buffer_count}/{buffer_capacity} items"
+                if station.buffer:
+                    # Show all items since buffer capacity is only 8
+                    buffer_str += f" [{', '.join(map(str, station.buffer))}]"
             buffer_info.append(buffer_str)
 
         # Shelf details for each robot
@@ -427,7 +444,7 @@ class Warehouse:
         # Add legend for robot colors and picking station colors
         legend_text = (
             "Legend: Robots: Green=Idle, Blue=Going to shelf, Orange=Going to pickup, Red=Returning shelf\n"
-            "Picking Stations: Purple=Low buffer, Orange=Half full, Red=Nearly full"
+            "Picking Stations: Purple=Low buffer, Orange=Half full, Red=Nearly full, Gray=Buffer disabled"
         )
         ax1.text(
             0.5,
@@ -463,3 +480,16 @@ class Warehouse:
             return 0
         else:
             return delay / order_count
+
+    def set_buffer_enabled(self, enabled):
+        """Enable or disable all picking station buffers."""
+        self.buffer_enabled = enabled
+        for station in self.picking_stations:
+            station.set_buffer_enabled(enabled)
+    
+    def set_station_buffer_enabled(self, station_index, enabled):
+        """Enable or disable a specific picking station buffer."""
+        if 0 <= station_index < len(self.picking_stations):
+            self.picking_stations[station_index].set_buffer_enabled(enabled)
+        else:
+            raise IndexError(f"Station index {station_index} out of range")
