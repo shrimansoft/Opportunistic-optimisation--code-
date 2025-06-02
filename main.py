@@ -7,6 +7,15 @@ from collections import deque
 from warehouse_sim.warehouse import Warehouse
 
 
+def set_seed(seed=42):
+    """Set seeds for reproducibility"""
+    random.seed(seed)
+    np.random.seed(seed)
+    # If using torch or tensorflow, add their seeds here too
+    # torch.manual_seed(seed)
+    # tf.random.set_seed(seed)
+
+
 class WarehouseEnv(gym.Env):
     """
     Custom Gymnasium Environment for the Warehouse Simulation
@@ -31,13 +40,17 @@ class WarehouseEnv(gym.Env):
         self.max_steps = 500
         self.current_step = 0
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         """
         Resets the environment to the initial state.
         """
+        if seed is not None:
+            set_seed(seed)
         self.warehouse.reset()
         self.current_step = 0
-        return self._get_observation()
+        obs = self._get_observation()
+        info = {}
+        return obs, info
 
     def _get_observation(self):
         """
@@ -69,17 +82,18 @@ class WarehouseEnv(gym.Env):
 
         self.warehouse.robot_assigner()
 
-        # Check if the warehouse is out of stock
-        done = self.warehouse.stock.sum(
-        ) == 0 or self.current_step >= self.max_steps
-
         # Calculate the reward based on the completed orders and warehouse state
         reward = self._calculate_reward()
 
         # Get the next observation
         obs = self._get_observation()
+        
+        # For newer gymnasium API, return (obs, reward, terminated, truncated, info)
+        terminated = self.warehouse.stock.sum() == 0  # Episode ends when out of stock
+        truncated = self.current_step >= self.max_steps  # Episode truncated at max steps
+        info = {}
 
-        return obs, reward, done, {}
+        return obs, reward, terminated, truncated, info
 
     def _calculate_reward(self):
         """
@@ -104,19 +118,23 @@ class WarehouseEnv(gym.Env):
 
 
 def main():
+    # Set seed for reproducibility
+    SEED = 42
+    set_seed(SEED)
 
-    warehouse = Warehouse()
+    warehouse = Warehouse(seed=SEED)
     env = WarehouseEnv(warehouse)  # Initialize the Gymnasium environment
 
-
     for episode in range(1):
-        obs = env.reset()
-        done = False
+        obs, info = env.reset(seed=SEED + episode)  # Different seed per episode
+        terminated = False
+        truncated = False
         total_reward = 0
 
-        while not done:
+        while not (terminated or truncated):
             action = env.action_space.sample()  # Random action
-            next_obs, reward, done, _ = env.step(action)
+            next_obs, reward, terminated, truncated, info = env.step(action)
+            env.render()
             total_reward += reward
 
         print(f"Episode {episode + 1} finished with total reward: {total_reward}")
