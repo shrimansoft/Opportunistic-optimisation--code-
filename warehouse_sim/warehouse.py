@@ -84,7 +84,19 @@ class Warehouse:
                              p=self.probabilities).item())
 
     def available(self):
-        return list(map(bool, self.stock))
+        # Check both shelf stock and picking station buffers
+        availability = list(map(bool, self.stock))
+        
+        # Also check if items are available in any picking station buffer
+        for i in range(len(availability)):
+            if not availability[i]:  # Only check buffers if item not available on shelves
+                # Check all picking stations for this item
+                for picking_station in self.picking_stations:
+                    if i in picking_station.buffer:
+                        availability[i] = True
+                        break
+        
+        return availability
 
     def itemInShelfs(self, n):
         """TODO describe function
@@ -116,12 +128,29 @@ class Warehouse:
             available = self.available()
             samples = self.sample()
             if available[samples]:
-                shelf, distence = self.nearestShelf(samples)
-                self.itemShelfsBufferSet.add(shelf)
-                self.order_buffer.append(OrderItem(samples, self.time, shelf))
-                self.shelfs[shelf].remove(samples)
-                print("Total stock >> ", self.stock.sum())
-                self.stock[samples] -= 1
+                # Check if the item is available in any picking station buffer
+                item_found_in_buffer = False
+                for station in self.picking_stations:
+                    if samples in station.buffer:
+                        # Item found in buffer - create order and fulfill immediately
+                        order = OrderItem(samples, self.time, None)  # No shelf needed
+                        order.done(self.time, None)  # Completed immediately, no robot needed
+                        self.order_compleated.append(order)
+                        station.buffer.remove(samples)
+                        self.stock[samples] -= 1
+                        item_found_in_buffer = True
+                        print(f"Order for item {samples} fulfilled immediately from picking station buffer")
+                        print("Total stock >> ", self.stock.sum())
+                        break
+                
+                # If item not found in buffer, create regular order
+                if not item_found_in_buffer:
+                    shelf, distence = self.nearestShelf(samples)
+                    self.itemShelfsBufferSet.add(shelf)
+                    self.order_buffer.append(OrderItem(samples, self.time, shelf))
+                    self.shelfs[shelf].remove(samples)
+                    print("Total stock >> ", self.stock.sum())
+                    self.stock[samples] -= 1
 
     def robot_assigner(self):
         itemShelfsBufferSet = self.itemShelfsBufferSet
