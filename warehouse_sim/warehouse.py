@@ -11,7 +11,10 @@ from .robot import Robot
 
 class Warehouse:
 
-    def __init__(self):
+    def __init__(self, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
+        
         self.time = 0
         self.probabilities = np.random.dirichlet(
             np.ones(50), size=1)[0]  # Assumption from past order distribution.
