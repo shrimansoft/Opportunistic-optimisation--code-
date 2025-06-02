@@ -1,11 +1,54 @@
-
-
 * How to make the mp4 from files.
 
+** Using FFmpeg (Original Method)
 
 #+BEGIN_SRC shell
   ffmpeg -framerate 10 -i shelfs2/frame_%04d.png -c:v libx264 -pix_fmt yuv420p -crf 23 warehouse_shelf_distribution4.mp4
 #+END_SRC
+
+** Using Python Video Generator (New Method - No FFmpeg Required!)
+
+The new Python-based video generator eliminates the need for external FFmpeg commands:
+
+*** Simple frame conversion (direct FFmpeg replacement):
+#+BEGIN_SRC shell
+  poetry run python convert_frames.py shelfs2 warehouse_shelf_distribution4.mp4
+  # Or with custom framerate:
+  poetry run python convert_frames.py shelfs2 warehouse_shelf_distribution4.mp4 15
+#+END_SRC
+
+*** Run simulation and create video directly:
+#+BEGIN_SRC shell
+  # Quick demo (30 steps)
+  poetry run python warehouse_video.py simulate --steps 30 --output demo.mp4 --framerate 10
+
+  # Full simulation (200 steps)
+  poetry run python warehouse_video.py simulate --steps 200 --output warehouse_sim.mp4
+
+  # Custom settings
+  poetry run python warehouse_video.py simulate --steps 100 --framerate 15 --save-every 2
+#+END_SRC
+
+*** Convert existing frames:
+#+BEGIN_SRC shell
+  poetry run python warehouse_video.py convert shelfs2 --output warehouse_distribution.mp4 --framerate 10
+#+END_SRC
+
+*** Dependencies:
+The video generator uses OpenCV and MoviePy for video creation:
+#+BEGIN_SRC shell
+  poetry install  # Installs all dependencies including opencv-python and moviepy
+#+END_SRC
+
+* Video Generator Features
+
+- **No FFmpeg required**: Pure Python solution using OpenCV or MoviePy
+- **Automatic backend selection**: Uses OpenCV if available, falls back to MoviePy
+- **Multiple quality settings**: low, medium, high quality options
+- **Progress indicators**: Shows encoding progress
+- **Flexible frame patterns**: Supports different naming conventions
+- **Automatic cleanup**: Can automatically delete frames after video creation
+- **Integration ready**: Works directly with your warehouse simulation
 
 * How to freeze env
 [[https://stackoverflow.com/q/41249401][src]]
