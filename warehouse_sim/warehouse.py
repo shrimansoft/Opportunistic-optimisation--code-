@@ -76,8 +76,36 @@ class Warehouse:
 
 
     def reset(self):
+        """Reset the warehouse to initial state for a new simulation."""
         self.time = 0
-        # TODO and many other thing from __init__ when need to be reset.
+        
+        # Reset stock to initial state
+        self.stock = np.ones(50) * 48  # 50 types of items with 48 of each type
+        
+        # Reinitialize shelf layout
+        items = np.repeat(np.arange(0, 50), 48)  # fill the warehouse
+        np.random.shuffle(items)
+        shelfs = items.reshape(400, 6)
+        self.shelfs = shelfs.tolist()
+        
+        # Clear order queues
+        self.order_buffer.clear()
+        self.order_compleated.clear()
+        self.itemShelfsBufferSet.clear()
+        
+        # Reset robots to initial state
+        for robot in self.robots:
+            robot.available = True
+            robot.mode = 0
+            robot.time_left = 0
+            robot.shelf = None
+            robot.current_location = (0, 0)
+            robot.target_location = (0, 0)
+            robot.shelf_location = None
+        
+        # Reset picking station buffers
+        for station in self.picking_stations:
+            station.buffer.clear()
 
     def sample(self):
         """TODO describe function

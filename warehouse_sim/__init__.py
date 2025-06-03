@@ -11,4 +11,4 @@ from .order import OrderItem
 from .picking_station import PickingStation
 
 __version__ = "0.1.0"
-__all__ = ["Warehouse", "Robot", "OrderItem", "PickingStation", "WarehouseEnv"]
+__all__ = ["Warehouse", "Robot", "OrderItem", "PickingStation"]
