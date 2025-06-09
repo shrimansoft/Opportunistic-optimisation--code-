@@ -1,18 +1,20 @@
-import numpy as np
 import matplotlib
+import numpy as np
+
 # Set backend before importing pyplot to avoid TclError issues
 matplotlib.use('TkAgg')  # Use TkAgg backend for better interactive support
-import matplotlib.pyplot as plt
+import os
+from typing import List
+
 import matplotlib.colors as mcolors
 import matplotlib.patches as patches
-from matplotlib.lines import Line2D
-from matplotlib.gridspec import GridSpec
-import os
+import matplotlib.pyplot as plt
 import psutil
-from typing import List, Dict
+from matplotlib.gridspec import GridSpec
+from matplotlib.lines import Line2D
 
-from .picking_station import PickingStation
 from .order import OrderItem
+from .picking_station import PickingStation
 from .robot import Robot
 
 # Configure matplotlib for interactive plotting
