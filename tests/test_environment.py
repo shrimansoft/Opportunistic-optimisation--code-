@@ -11,7 +11,7 @@ def test_warehouse_env_initialization():
     """Test WarehouseEnv initialization"""
     warehouse = Warehouse()
     env = WarehouseEnv(warehouse)
-    
+
     assert env.warehouse is warehouse
     assert env.action_space.n == 4
     assert env.observation_space.shape == (400,)
@@ -23,13 +23,13 @@ def test_warehouse_env_reset():
     """Test environment reset functionality"""
     warehouse = Warehouse()
     env = WarehouseEnv(warehouse)
-    
+
     # Modify environment state
     env.current_step = 100
-    
+
     # Reset environment
     obs, info = env.reset()
-    
+
     assert env.current_step == 0
     assert isinstance(obs, np.ndarray)
     assert obs.shape == (400,)
@@ -40,14 +40,14 @@ def test_warehouse_env_step():
     """Test environment step functionality"""
     warehouse = Warehouse()
     env = WarehouseEnv(warehouse)
-    
+
     # Reset environment
     obs, info = env.reset()
-    
+
     # Take a step
     action = 0  # Idle action
     next_obs, reward, terminated, truncated, info = env.step(action)
-    
+
     assert isinstance(next_obs, np.ndarray)
     assert next_obs.shape == (400,)
     assert isinstance(reward, (int, float))
@@ -61,9 +61,9 @@ def test_warehouse_env_observation():
     """Test observation generation"""
     warehouse = Warehouse()
     env = WarehouseEnv(warehouse)
-    
+
     obs = env._get_observation()
-    
+
     assert isinstance(obs, np.ndarray)
     assert obs.shape == (400,)
     assert obs.dtype == np.int32
@@ -75,7 +75,7 @@ def test_warehouse_env_reward_calculation():
     """Test reward calculation"""
     warehouse = Warehouse()
     env = WarehouseEnv(warehouse)
-    
+
     # Initially no completed orders
     reward = env._calculate_reward()
     assert reward == 0

@@ -14,12 +14,14 @@ from typing import List
 
 try:
     import cv2
+
     OPENCV_AVAILABLE = True
 except ImportError:
     OPENCV_AVAILABLE = False
 
 try:
     from moviepy.editor import ImageSequenceClip
+
     MOVIEPY_AVAILABLE = True
 except ImportError:
     MOVIEPY_AVAILABLE = False
@@ -47,24 +49,29 @@ class VideoGenerator:
             elif MOVIEPY_AVAILABLE:
                 return "moviepy"
             else:
-                raise ImportError("No video processing library available. "
-                                  "Please install opencv-python or moviepy.")
+                raise ImportError(
+                    "No video processing library available. "
+                    "Please install opencv-python or moviepy."
+                )
         elif backend == "opencv" and not OPENCV_AVAILABLE:
             raise ImportError(
                 "OpenCV not available. Install with: pip install opencv-python"
             )
         elif backend == "moviepy" and not MOVIEPY_AVAILABLE:
             raise ImportError(
-                "MoviePy not available. Install with: pip install moviepy")
+                "MoviePy not available. Install with: pip install moviepy"
+            )
 
         return backend
 
-    def create_video_from_frames(self,
-                                 frames_dir: str,
-                                 output_path: str,
-                                 framerate: int = 10,
-                                 frame_pattern: str = "frame_%04d.png",
-                                 quality: str = "high") -> bool:
+    def create_video_from_frames(
+        self,
+        frames_dir: str,
+        output_path: str,
+        framerate: int = 10,
+        frame_pattern: str = "frame_%04d.png",
+        quality: str = "high",
+    ) -> bool:
         """
         Create a video from frames in a directory.
 
@@ -97,11 +104,13 @@ class VideoGenerator:
 
         try:
             if self.backend == "opencv":
-                return self._create_video_opencv(frame_files, output_path,
-                                                 framerate, quality)
+                return self._create_video_opencv(
+                    frame_files, output_path, framerate, quality
+                )
             elif self.backend == "moviepy":
-                return self._create_video_moviepy(frame_files, output_path,
-                                                  framerate, quality)
+                return self._create_video_moviepy(
+                    frame_files, output_path, framerate, quality
+                )
         except Exception as e:
             print(f"Error creating video: {e}")
             return False
@@ -119,8 +128,7 @@ class VideoGenerator:
             try:
                 # Extract number from filename
                 basename = os.path.basename(filename)
-                number_part = basename.replace("frame_",
-                                               "").replace(".png", "")
+                number_part = basename.replace("frame_", "").replace(".png", "")
                 return int(number_part)
             except:
                 return 0
@@ -128,8 +136,9 @@ class VideoGenerator:
         frame_files.sort(key=extract_frame_number)
         return frame_files
 
-    def _create_video_opencv(self, frame_files: List[str], output_path: str,
-                             framerate: int, quality: str) -> bool:
+    def _create_video_opencv(
+        self, frame_files: List[str], output_path: str, framerate: int, quality: str
+    ) -> bool:
         """Create video using OpenCV."""
         # Read first frame to get dimensions
         first_frame = cv2.imread(frame_files[0])
@@ -140,7 +149,7 @@ class VideoGenerator:
         height, width, _ = first_frame.shape
 
         # Set up video codec and quality
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
         # Create VideoWriter object
         out = cv2.VideoWriter(output_path, fourcc, framerate, (width, height))
@@ -154,9 +163,7 @@ class VideoGenerator:
         for i, frame_file in enumerate(frame_files):
             frame = cv2.imread(frame_file)
             if frame is None:
-                print(
-                    f"Warning: Could not read frame '{frame_file}', skipping..."
-                )
+                print(f"Warning: Could not read frame '{frame_file}', skipping...")
                 continue
 
             out.write(frame)
@@ -169,8 +176,9 @@ class VideoGenerator:
         print(f"Video saved successfully to '{output_path}'")
         return True
 
-    def _create_video_moviepy(self, frame_files: List[str], output_path: str,
-                              framerate: int, quality: str) -> bool:
+    def _create_video_moviepy(
+        self, frame_files: List[str], output_path: str, framerate: int, quality: str
+    ) -> bool:
         """Create video using MoviePy."""
         print(f"Processing {len(frame_files)} frames...")
 
@@ -186,12 +194,14 @@ class VideoGenerator:
             bitrate = "1000k"
 
         # Write video file
-        clip.write_videofile(output_path,
-                             codec='libx264',
-                             audio=False,
-                             bitrate=bitrate,
-                             verbose=False,
-                             logger=None)
+        clip.write_videofile(
+            output_path,
+            codec="libx264",
+            audio=False,
+            bitrate=bitrate,
+            verbose=False,
+            logger=None,
+        )
 
         print(f"Video saved successfully to '{output_path}'")
         return True
@@ -203,12 +213,13 @@ class SimulationVideoGenerator(VideoGenerator):
     """
 
     def run_simulation_and_create_video(
-            self,
-            steps: int = 100,
-            output_video: str = "warehouse_simulation.mp4",
-            frames_dir: str = "simulation_frames",
-            framerate: int = 10,
-            cleanup_frames: bool = True) -> bool:
+        self,
+        steps: int = 100,
+        output_video: str = "warehouse_simulation.mp4",
+        frames_dir: str = "simulation_frames",
+        framerate: int = 10,
+        cleanup_frames: bool = True,
+    ) -> bool:
         """
         Run a simulation, generate frames, and create a video.
 
@@ -256,14 +267,15 @@ class SimulationVideoGenerator(VideoGenerator):
         print(f"Simulation complete. Frames saved to '{frames_dir}'")
 
         # Create video from frames
-        success = self.create_video_from_frames(frames_dir=frames_dir,
-                                                output_path=output_video,
-                                                framerate=framerate)
+        success = self.create_video_from_frames(
+            frames_dir=frames_dir, output_path=output_video, framerate=framerate
+        )
 
         if success and cleanup_frames:
             print(f"Cleaning up frames in '{frames_dir}'...")
             try:
                 import shutil
+
                 shutil.rmtree(frames_dir)
                 print("Frames cleaned up successfully.")
             except Exception as e:
@@ -275,78 +287,84 @@ class SimulationVideoGenerator(VideoGenerator):
 def main():
     """Main function for command-line usage."""
     parser = argparse.ArgumentParser(
-        description="Generate videos from warehouse simulation")
+        description="Generate videos from warehouse simulation"
+    )
 
-    subparsers = parser.add_subparsers(dest='command',
-                                       help='Available commands')
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Subcommand for creating video from existing frames
     frames_parser = subparsers.add_parser(
-        'from-frames', help='Create video from existing frames')
-    frames_parser.add_argument('frames_dir',
-                               help='Directory containing frame images')
-    frames_parser.add_argument('output_video', help='Output video file path')
-    frames_parser.add_argument('--framerate',
-                               type=int,
-                               default=10,
-                               help='Video framerate (default: 10)')
-    frames_parser.add_argument('--pattern',
-                               default='frame_%04d.png',
-                               help='Frame filename pattern')
-    frames_parser.add_argument('--quality',
-                               choices=['low', 'medium', 'high'],
-                               default='high',
-                               help='Video quality')
-    frames_parser.add_argument('--backend',
-                               choices=['opencv', 'moviepy', 'auto'],
-                               default='auto',
-                               help='Video backend')
+        "from-frames", help="Create video from existing frames"
+    )
+    frames_parser.add_argument("frames_dir", help="Directory containing frame images")
+    frames_parser.add_argument("output_video", help="Output video file path")
+    frames_parser.add_argument(
+        "--framerate", type=int, default=10, help="Video framerate (default: 10)"
+    )
+    frames_parser.add_argument(
+        "--pattern", default="frame_%04d.png", help="Frame filename pattern"
+    )
+    frames_parser.add_argument(
+        "--quality",
+        choices=["low", "medium", "high"],
+        default="high",
+        help="Video quality",
+    )
+    frames_parser.add_argument(
+        "--backend",
+        choices=["opencv", "moviepy", "auto"],
+        default="auto",
+        help="Video backend",
+    )
 
     # Subcommand for running simulation and creating video
-    sim_parser = subparsers.add_parser('simulate',
-                                       help='Run simulation and create video')
-    sim_parser.add_argument('--steps',
-                            type=int,
-                            default=100,
-                            help='Number of simulation steps')
-    sim_parser.add_argument('--output',
-                            default='warehouse_simulation.mp4',
-                            help='Output video file')
-    sim_parser.add_argument('--frames-dir',
-                            default='simulation_frames',
-                            help='Temporary frames directory')
-    sim_parser.add_argument('--framerate',
-                            type=int,
-                            default=10,
-                            help='Video framerate')
-    sim_parser.add_argument('--keep-frames',
-                            action='store_true',
-                            help='Keep frame files after video creation')
-    sim_parser.add_argument('--backend',
-                            choices=['opencv', 'moviepy', 'auto'],
-                            default='auto',
-                            help='Video backend')
+    sim_parser = subparsers.add_parser(
+        "simulate", help="Run simulation and create video"
+    )
+    sim_parser.add_argument(
+        "--steps", type=int, default=100, help="Number of simulation steps"
+    )
+    sim_parser.add_argument(
+        "--output", default="warehouse_simulation.mp4", help="Output video file"
+    )
+    sim_parser.add_argument(
+        "--frames-dir", default="simulation_frames", help="Temporary frames directory"
+    )
+    sim_parser.add_argument("--framerate", type=int, default=10, help="Video framerate")
+    sim_parser.add_argument(
+        "--keep-frames",
+        action="store_true",
+        help="Keep frame files after video creation",
+    )
+    sim_parser.add_argument(
+        "--backend",
+        choices=["opencv", "moviepy", "auto"],
+        default="auto",
+        help="Video backend",
+    )
 
     args = parser.parse_args()
 
-    if args.command == 'from-frames':
+    if args.command == "from-frames":
         generator = VideoGenerator(backend=args.backend)
         success = generator.create_video_from_frames(
             frames_dir=args.frames_dir,
             output_path=args.output_video,
             framerate=args.framerate,
             frame_pattern=args.pattern,
-            quality=args.quality)
+            quality=args.quality,
+        )
         exit(0 if success else 1)
 
-    elif args.command == 'simulate':
+    elif args.command == "simulate":
         generator = SimulationVideoGenerator(backend=args.backend)
         success = generator.run_simulation_and_create_video(
             steps=args.steps,
             output_video=args.output,
             frames_dir=args.frames_dir,
             framerate=args.framerate,
-            cleanup_frames=not args.keep_frames)
+            cleanup_frames=not args.keep_frames,
+        )
         exit(0 if success else 1)
 
     else:

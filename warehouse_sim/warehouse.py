@@ -10,20 +10,18 @@ from .robot import Robot
 
 
 class Warehouse:
-
     def __init__(self, seed=None, buffer_enabled=True):
         if seed is not None:
             np.random.seed(seed)
-        
+
         self.time = 0
         self.buffer_enabled = buffer_enabled
-        self.probabilities = np.random.dirichlet(
-            np.ones(50), size=1)[0]  # Assumption from past order distribution.
-        self.distance = np.array([((i % 20) + (i // 20) + 2)
-                                  for i in range(400)])
+        self.probabilities = np.random.dirichlet(np.ones(50), size=1)[
+            0
+        ]  # Assumption from past order distribution.
+        self.distance = np.array([((i % 20) + (i // 20) + 2) for i in range(400)])
 
-        self.stock = np.ones(
-            50) * 48  # 50 types of items with 48 of each type.
+        self.stock = np.ones(50) * 48  # 50 types of items with 48 of each type.
         items = np.repeat(np.arange(0, 50), 48)  # fill the wear house
         np.random.shuffle(items)
         shelfs = items.reshape(400, 6)
@@ -35,7 +33,7 @@ class Warehouse:
 
         self.picking_stations = [
             PickingStation(self, (0, 14), buffer_enabled=self.buffer_enabled),
-            PickingStation(self, (0, 10), buffer_enabled=self.buffer_enabled)
+            PickingStation(self, (0, 10), buffer_enabled=self.buffer_enabled),
         ]
         self.robots = [
             Robot(self, 1),
@@ -48,51 +46,51 @@ class Warehouse:
         ]
         # self.robots = [Robot(self,1)]
 
-
-
     def buffer_update(self, shelf, picking_station: PickingStation):
         """
         Redistributes items between shelf and buffer based on demand probabilities.
-        Most demanded items go to buffer, rest to shelf. Only works if buffers are enabled."""
-        
+        Most demanded items go to buffer, rest to shelf. Only works if buffers are enabled.
+        """
+
         # Skip buffer operations if buffers are disabled
         if not self.buffer_enabled or not picking_station.buffer_enabled:
             return
-            
+
         # Combine and sort items by demand probability (descending)
         all_items = self.shelfs[shelf] + picking_station.buffer
         if not all_items:
             return
-        
-        sorted_items = sorted(all_items, key=lambda item: self.probabilities[item], reverse=True)
-        
+
+        sorted_items = sorted(
+            all_items, key=lambda item: self.probabilities[item], reverse=True
+        )
+
         # Clear and redistribute based on max buffer capacity
         self.shelfs[shelf].clear()
         picking_station.buffer.clear()
-        
+
         max_capacity = picking_station.buffer_size
         picking_station.buffer.extend(sorted_items[:max_capacity])
-        self.shelfs[shelf].extend(sorted_items[max_capacity:max_capacity*2])
-
+        self.shelfs[shelf].extend(sorted_items[max_capacity : max_capacity * 2])
 
     def reset(self):
         """Reset the warehouse to initial state for a new simulation."""
         self.time = 0
-        
+
         # Reset stock to initial state
         self.stock = np.ones(50) * 48  # 50 types of items with 48 of each type
-        
+
         # Reinitialize shelf layout
         items = np.repeat(np.arange(0, 50), 48)  # fill the warehouse
         np.random.shuffle(items)
         shelfs = items.reshape(400, 6)
         self.shelfs = shelfs.tolist()
-        
+
         # Clear order queues
         self.order_buffer.clear()
         self.order_compleated.clear()
         self.itemShelfsBufferSet.clear()
-        
+
         # Reset robots to initial state
         for robot in self.robots:
             robot.available = True
@@ -102,7 +100,7 @@ class Warehouse:
             robot.current_location = (0, 0)
             robot.target_location = (0, 0)
             robot.shelf_location = None
-        
+
         # Reset picking station buffers
         for station in self.picking_stations:
             station.buffer.clear()
@@ -113,25 +111,25 @@ class Warehouse:
         :returns: this will return a item from the self.probabili
 
         """
-        return int(
-            np.random.choice(np.arange(50), size=1,
-                             p=self.probabilities).item())
+        return int(np.random.choice(np.arange(50), size=1, p=self.probabilities).item())
 
     def available(self):
         # Check both shelf stock and picking station buffers
         availability = list(map(bool, self.stock))
-        
+
         # Only check buffers if they are enabled
         if self.buffer_enabled:
             # Also check if items are available in any picking station buffer
             for i in range(len(availability)):
-                if not availability[i]:  # Only check buffers if item not available on shelves
+                if not availability[
+                    i
+                ]:  # Only check buffers if item not available on shelves
                     # Check all picking stations for this item
                     for picking_station in self.picking_stations:
                         if i in picking_station.buffer:
                             availability[i] = True
                             break
-        
+
         return availability
 
     def itemInShelfs(self, n):
@@ -150,8 +148,7 @@ class Warehouse:
             for i in range(len(self.distance))
         ]
         filteredList = [
-            (i, v) for i, (v, l) in enumerate(zip(distance, availableInShelfs))
-            if l
+            (i, v) for i, (v, l) in enumerate(zip(distance, availableInShelfs)) if l
         ]
         shelf, distance = min(filteredList, key=lambda x: x[1])
         return shelf, distance
@@ -170,16 +167,22 @@ class Warehouse:
                     for station in self.picking_stations:
                         if samples in station.buffer:
                             # Item found in buffer - create order and fulfill immediately
-                            order = OrderItem(samples, self.time, None)  # No shelf needed
-                            order.done(self.time, None)  # Completed immediately, no robot needed
+                            order = OrderItem(
+                                samples, self.time, None
+                            )  # No shelf needed
+                            order.done(
+                                self.time, None
+                            )  # Completed immediately, no robot needed
                             self.order_compleated.append(order)
                             station.buffer.remove(samples)
                             self.stock[samples] -= 1
                             item_found_in_buffer = True
-                            print(f"Order for item {samples} fulfilled immediately from picking station buffer")
+                            print(
+                                f"Order for item {samples} fulfilled immediately from picking station buffer"
+                            )
                             print("Total stock >> ", self.stock.sum())
                             break
-                
+
                 # If item not found in buffer, create regular order
                 if not item_found_in_buffer:
                     shelf, distence = self.nearestShelf(samples)
@@ -210,34 +213,36 @@ class Warehouse:
         shelfs = self.shelfs
         itemShelfsBufferSet = self.itemShelfsBufferSet
         # Define discrete colormap
-        cmap = mcolors.ListedColormap([
-            "#f7fbff",
-            "#deebf7",
-            "#c6dbef",
-            "#9ecae1",
-            "#6baed6",
-            "#3182bd",
-            "#08519c",
-        ])
+        cmap = mcolors.ListedColormap(
+            [
+                "#f7fbff",
+                "#deebf7",
+                "#c6dbef",
+                "#9ecae1",
+                "#6baed6",
+                "#3182bd",
+                "#08519c",
+            ]
+        )
         norm = mcolors.BoundaryNorm(np.arange(0, 8), cmap.N)
 
         shelf_counts = np.array([len(a) for a in shelfs])
         # shelf_counts = shelfs.sum(axis=1)  # Sum along each shelf's items
         warehouse_layout = shelf_counts.reshape(
-            20, 20)  # Reshape to 20x20 for the warehouse
+            20, 20
+        )  # Reshape to 20x20 for the warehouse
 
         # Create the plot for this frame
         fig = plt.figure(figsize=(16, 12))
         ax1 = plt.subplot(121)
         ax2 = plt.subplot(122)
-        
+
         # Adjust subplot layout to make room for text
         plt.subplots_adjust(bottom=0.35)
 
-        img1 = ax1.imshow(warehouse_layout,
-                          cmap=cmap,
-                          norm=norm,
-                          interpolation="nearest")
+        img1 = ax1.imshow(
+            warehouse_layout, cmap=cmap, norm=norm, interpolation="nearest"
+        )
 
         # Plot picking stations
         for station_idx, station in enumerate(self.picking_stations):
@@ -251,7 +256,11 @@ class Warehouse:
             elif station.buffer_size == 0:
                 station_color = "gray"  # No buffer capacity
             else:
-                buffer_ratio = len(station.buffer) / station.buffer_size if station.buffer_size > 0 else 0
+                buffer_ratio = (
+                    len(station.buffer) / station.buffer_size
+                    if station.buffer_size > 0
+                    else 0
+                )
                 if buffer_ratio >= 0.8:
                     station_color = "red"  # Nearly full
                 elif buffer_ratio >= 0.5:
@@ -260,38 +269,46 @@ class Warehouse:
                     station_color = "purple"  # Not crowded
 
             # Plot picking station as a large square marker
-            ax1.plot(station_y,
-                     station_x,
-                     "s",
-                     markersize=12,
-                     color=station_color,
-                     markeredgecolor="black",
-                     markeredgewidth=2)
-            ax2.plot(station_y,
-                     station_x,
-                     "s",
-                     markersize=12,
-                     color=station_color,
-                     markeredgecolor="black",
-                     markeredgewidth=2)
+            ax1.plot(
+                station_y,
+                station_x,
+                "s",
+                markersize=12,
+                color=station_color,
+                markeredgecolor="black",
+                markeredgewidth=2,
+            )
+            ax2.plot(
+                station_y,
+                station_x,
+                "s",
+                markersize=12,
+                color=station_color,
+                markeredgecolor="black",
+                markeredgewidth=2,
+            )
 
             # Add label for picking station with station number
-            ax1.text(station_y,
-                     station_x,
-                     f"{station_idx}",
-                     color="white",
-                     fontsize=8,
-                     ha="center",
-                     va="center",
-                     weight="bold")
-            ax2.text(station_y,
-                     station_x,
-                     f"{station_idx}",
-                     color="white",
-                     fontsize=8,
-                     ha="center",
-                     va="center",
-                     weight="bold")
+            ax1.text(
+                station_y,
+                station_x,
+                f"{station_idx}",
+                color="white",
+                fontsize=8,
+                ha="center",
+                va="center",
+                weight="bold",
+            )
+            ax2.text(
+                station_y,
+                station_x,
+                f"{station_idx}",
+                color="white",
+                fontsize=8,
+                ha="center",
+                va="center",
+                weight="bold",
+            )
 
         # Plot robot locations
 
@@ -323,17 +340,17 @@ class Warehouse:
                     ha="center",
                     va="center",
                 )
-                ax2.plot(shelf_y - 1,
-                         shelf_x - 1,
-                         "D",
-                         markersize=8,
-                         color="#08519c")  # Circle marker for robot
+                ax2.plot(
+                    shelf_y - 1, shelf_x - 1, "D", markersize=8, color="#08519c"
+                )  # Circle marker for robot
 
             # Plot robot's current location with the appropriate color
-            ax1.plot(robot_y, robot_x, "o", markersize=8,
-                     color=robot_color)  # Circle marker for robot
-            ax2.plot(robot_y, robot_x, "o", markersize=8,
-                     color=robot_color)  # Circle marker for robot
+            ax1.plot(
+                robot_y, robot_x, "o", markersize=8, color=robot_color
+            )  # Circle marker for robot
+            ax2.plot(
+                robot_y, robot_x, "o", markersize=8, color=robot_color
+            )  # Circle marker for robot
 
             # Display robot ID and mode at the robot's position
             ax1.text(
@@ -355,8 +372,7 @@ class Warehouse:
                 va="center",
             )
 
-        shelf_buffer = np.array([(i in itemShelfsBufferSet)
-                                 for i in range(400)])
+        shelf_buffer = np.array([(i in itemShelfsBufferSet) for i in range(400)])
         shelf_buffer_layout = shelf_buffer.reshape(20, 20)
 
         img2 = ax2.imshow(
@@ -408,7 +424,8 @@ class Warehouse:
         for robot in self.robots:
             if robot.shelf is not None:
                 robot_shelf_info.append(
-                    f"R{robot.robot_id} carrying Shelf {robot.shelf}")
+                    f"R{robot.robot_id} carrying Shelf {robot.shelf}"
+                )
             else:
                 robot_shelf_info.append(f"R{robot.robot_id} idle")
 
@@ -514,7 +531,7 @@ class Warehouse:
         self.buffer_enabled = enabled
         for station in self.picking_stations:
             station.set_buffer_enabled(enabled)
-    
+
     def set_station_buffer_enabled(self, station_index, enabled):
         """Enable or disable a specific picking station buffer."""
         if 0 <= station_index < len(self.picking_stations):

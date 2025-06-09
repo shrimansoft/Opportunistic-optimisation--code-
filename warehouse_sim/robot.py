@@ -9,7 +9,9 @@ if TYPE_CHECKING:
 class Robot:
     def __init__(self, warehouse: "Warehouse", id: int):
         self.warehouse = warehouse
-        self.pickingStation = self.warehouse.picking_stations[0] #TODO We can maek it general in future. 
+        self.pickingStation = self.warehouse.picking_stations[
+            0
+        ]  # TODO We can maek it general in future.
         self.robot_id = id
         self.available = True
         # Mode expanation

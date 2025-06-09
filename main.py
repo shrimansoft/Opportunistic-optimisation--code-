@@ -30,11 +30,11 @@ class WarehouseEnv(gym.Env):
         # Define action and observation space
         # Action: Robot can either go to pick a shelf or pick up an item (depending on its state)
         self.action_space = spaces.Discrete(
-            4)  # Idle, Go to Shelf, Go to Pickup Station, Return Shelf
-        self.observation_space = spaces.Box(low=0,
-                                            high=1,
-                                            shape=(400, ),
-                                            dtype=np.int32)  # Shelves' state
+            4
+        )  # Idle, Go to Shelf, Go to Pickup Station, Return Shelf
+        self.observation_space = spaces.Box(
+            low=0, high=1, shape=(400,), dtype=np.int32
+        )  # Shelves' state
 
         # The maximum number of steps per episode (time steps)
         self.max_steps = 500
@@ -57,8 +57,9 @@ class WarehouseEnv(gym.Env):
         Returns the current observation (state) of the warehouse
         For simplicity, it could be the number of items available in each shelf
         """
-        shelf_counts = [len(shelf) for shelf in self.warehouse.shelfs
-                        ]  # Number of items per shelf
+        shelf_counts = [
+            len(shelf) for shelf in self.warehouse.shelfs
+        ]  # Number of items per shelf
         return np.array(shelf_counts, dtype=np.int32)
 
     def step(self, action):
@@ -69,9 +70,8 @@ class WarehouseEnv(gym.Env):
 
         # Take action
 
-
-        #ploting
-        self.warehouse.shelf_plot('data/frames')
+        # ploting
+        self.warehouse.shelf_plot("data/frames")
 
         # Simulate the warehouse process (order creation and robot work)
         self.warehouse.order_step()
@@ -87,10 +87,12 @@ class WarehouseEnv(gym.Env):
 
         # Get the next observation
         obs = self._get_observation()
-        
+
         # For newer gymnasium API, return (obs, reward, terminated, truncated, info)
         terminated = self.warehouse.stock.sum() == 0  # Episode ends when out of stock
-        truncated = self.current_step >= self.max_steps  # Episode truncated at max steps
+        truncated = (
+            self.current_step >= self.max_steps
+        )  # Episode truncated at max steps
         info = {}
 
         return obs, reward, terminated, truncated, info
@@ -103,11 +105,12 @@ class WarehouseEnv(gym.Env):
         - Efficiency of robot movements
         """
         # Reward can be based on the number of orders completed within the time steps
-        reward = len(self.warehouse.order_compleated
-                     )  # Completed orders count as reward
+        reward = len(
+            self.warehouse.order_compleated
+        )  # Completed orders count as reward
         return reward
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         """
         Render the current state of the environment for visualization (useful for debugging)
         """
@@ -139,9 +142,6 @@ def main():
             total_reward += reward
 
         print(f"Episode {episode + 1} finished with total reward: {total_reward}")
-
-
-
 
 
 if __name__ == "__main__":

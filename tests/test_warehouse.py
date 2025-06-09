@@ -9,7 +9,7 @@ from warehouse_sim.warehouse import Warehouse
 def test_warehouse_initialization():
     """Test that warehouse initializes correctly"""
     warehouse = Warehouse()
-    
+
     assert warehouse.time == 0
     assert len(warehouse.shelfs) == 400
     assert len(warehouse.robots) == 6
@@ -20,7 +20,7 @@ def test_warehouse_initialization():
 def test_warehouse_sample():
     """Test item sampling from probability distribution"""
     warehouse = Warehouse()
-    
+
     # Sample should return an integer between 0 and 49
     sample = warehouse.sample()
     assert isinstance(sample, int)
@@ -30,7 +30,7 @@ def test_warehouse_sample():
 def test_warehouse_available():
     """Test available items check"""
     warehouse = Warehouse()
-    
+
     available = warehouse.available()
     assert len(available) == 50
     assert all(available)  # Initially all items should be available
@@ -39,7 +39,7 @@ def test_warehouse_available():
 def test_warehouse_item_in_shelfs():
     """Test counting items in shelfs"""
     warehouse = Warehouse()
-    
+
     # Test for item type 0
     item_counts = warehouse.itemInShelfs(0)
     assert len(item_counts) == 400
@@ -49,12 +49,12 @@ def test_warehouse_item_in_shelfs():
 def test_warehouse_reset():
     """Test warehouse reset functionality"""
     warehouse = Warehouse()
-    
+
     # Modify some state
     warehouse.time = 100
-    
+
     # Reset
     warehouse.reset()
-    
+
     # Check that time is reset
     assert warehouse.time == 0
