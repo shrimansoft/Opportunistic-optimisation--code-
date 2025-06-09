@@ -127,8 +127,8 @@ class WarehouseEnv(gym.Env):
             mode: Rendering mode ('human' or 'rgb_array')
         """
         if mode == "human":
-            # Generate visualization frame
-            self.warehouse.shelf_plot("temp_frames")
+            # Show interactive visualization instead of saving frames
+            self.warehouse.enhanced_plot(pause_time=0.1)
             print(
                 f"Step {self.current_step}: "
                 f"Completed Orders: {len(self.warehouse.order_compleated)}, "
