@@ -64,7 +64,7 @@ def run_simulation_with_video(
         # Save frame every N steps
         if step % save_every == 0:
             # Use the warehouse's existing plotting method
-            warehouse.shelf_plot(frames_dir)
+            warehouse.enhanced_plot(frames_dir)
             frame_count += 1
 
         # Progress indicator

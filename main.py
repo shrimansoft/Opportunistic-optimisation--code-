@@ -152,8 +152,8 @@ class WarehouseEnv(gym.Env):
         
         print(f"{'='*60}")
 
-        # Also generate frame for visual analysis
-        self.warehouse.shelf_plot(f"frames")
+        # Show the interactive plot instead of saving frames
+        self.warehouse.enhanced_plot(pause_time=0.5)  # Show plot with half-second pause
 
 
 def main():
@@ -162,6 +162,9 @@ def main():
     set_seed(SEED)
 
     warehouse = Warehouse(seed=SEED)
+    # Enable interactive plotting mode for real-time visualization
+    warehouse.enable_interactive_plot()
+    
     env = WarehouseEnv(warehouse)  # Initialize the Gymnasium environment
 
     for episode in range(1):
@@ -177,6 +180,10 @@ def main():
             total_reward += reward
 
         print(f"Episode {episode + 1} finished with total reward: {total_reward}")
+    
+    # Keep the plot window open after simulation ends
+    print("Simulation complete. Close the plot window to exit.")
+    input("Press Enter to exit...")
 
 
 if __name__ == "__main__":

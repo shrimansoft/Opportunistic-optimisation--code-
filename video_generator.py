@@ -255,7 +255,7 @@ class SimulationVideoGenerator(VideoGenerator):
 
             # Generate frame every step (or every few steps to reduce file size)
             if step % 1 == 0:  # Generate frame every step
-                warehouse.shelf_plot(frames_dir)
+                warehouse.enhanced_plot(frames_dir)
 
             if step % 10 == 0:
                 print(f"Simulation step {step}/{steps}")
