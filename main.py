@@ -70,8 +70,8 @@ class WarehouseEnv(gym.Env):
 
         # Take action
 
-        # ploting
-        self.warehouse.shelf_plot("data/frames")
+        # Enhanced plotting with metrics
+        self.warehouse.enhanced_plot("data/frames", self.current_step)
 
         # Simulate the warehouse process (order creation and robot work)
         self.warehouse.order_step()
@@ -114,11 +114,46 @@ class WarehouseEnv(gym.Env):
         """
         Render the current state of the environment for visualization (useful for debugging)
         """
+        # Print comprehensive metrics to console
+        avg_delay = self.warehouse.average_delay()
+        completed_orders = len(self.warehouse.order_compleated)
+        pending_orders = len(self.warehouse.order_buffer)
+        total_stock = self.warehouse.stock.sum()
+        
+        # Robot utilization
+        busy_robots = len([r for r in self.warehouse.robots if not r.available])
+        robot_utilization = (busy_robots / len(self.warehouse.robots)) * 100
+        
+        # Buffer metrics
+        total_buffer_items = sum(len(station.buffer) for station in self.warehouse.picking_stations)
+        buffer_orders = len([order for order in self.warehouse.order_compleated if order.delay == 0])
+        buffer_hit_rate = (buffer_orders / max(completed_orders, 1)) * 100
+        
+        print(f"\n{'='*60}")
+        print(f"STEP {self.current_step} - WAREHOUSE METRICS")
+        print(f"{'='*60}")
+        print(f"📦 INVENTORY    : Stock={int(total_stock):4d} | Pending={pending_orders:3d} | Completed={completed_orders:3d}")
+        print(f"⏱️  PERFORMANCE : Avg Delay={avg_delay:6.2f} | Buffer Hit Rate={buffer_hit_rate:5.1f}%")
+        print(f"🤖 ROBOTS      : Utilization={robot_utilization:5.1f}% | Busy={busy_robots}/{len(self.warehouse.robots)}")
+        print(f"📊 BUFFERS     : Total Items={total_buffer_items:3d}")
+        
+        # Show recent order delays
+        if completed_orders > 0:
+            recent_delays = [order.delay for order in self.warehouse.order_compleated[-5:]]
+            print(f"🕒 RECENT DELAYS: {recent_delays}")
+        
+        # Show buffer contents
+        for i, station in enumerate(self.warehouse.picking_stations):
+            if station.buffer_enabled:
+                buffer_items = station.buffer[:8]  # Show first 8 items
+                print(f"🗂️  BUFFER PS{i}: {len(station.buffer)}/{station.buffer_size} items {buffer_items}")
+            else:
+                print(f"🗂️  BUFFER PS{i}: DISABLED")
+        
+        print(f"{'='*60}")
+
+        # Also generate frame for visual analysis
         self.warehouse.shelf_plot(f"frames")
-        print(
-            f"Step {self.current_step}: Total Orders Completed: {len(self.warehouse.order_compleated)}"
-        )
-        print(self.warehouse.picking_stations[0].buffer)
 
 
 def main():
