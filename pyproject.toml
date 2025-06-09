@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "warehouse_sim"}]
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
+python = "^3.9.0,<4.0.0"
 gymnasium = "^0.29.0"
 numpy = "^1.24.0"
 matplotlib = "^3.7.0"
@@ -24,6 +24,7 @@ flake8 = "^6.0.0"
 mypy = "^1.5.0"
 ipykernel = "^6.29.5"
 yapf = "^0.43.0"
+isort = "^6.0.1"
 
 [tool.poetry.scripts]
 warehouse-sim = "warehouse_sim.main:main"
