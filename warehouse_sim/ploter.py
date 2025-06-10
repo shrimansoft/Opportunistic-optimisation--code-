@@ -1,4 +1,3 @@
-
 import matplotlib
 import numpy as np
 
@@ -40,13 +39,13 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
 
     # Create figure only once for interactive mode
     if self.fig is None:
-        self.fig = plt.figure(figsize=(18, 22), facecolor="#f0f0f0")
+        self.fig = plt.figure(figsize=(22, 26), facecolor="#f0f0f0")  # Increased from (18, 22)
         plt.show(block=False)  # Non-blocking show
     # Clear only the content, not the figure
     self.fig.clear()
 
     # --- 2. Figure and Layout Setup ---
-    gs = GridSpec(4, 2, figure=self.fig, height_ratios=[8, 2.5, 7, 1], hspace=0.6, wspace=0.15)
+    gs = GridSpec(4, 2, figure=self.fig, height_ratios=[10, 2.5, 6, 1], hspace=0.5, wspace=0.2)  # Increased first ratio from 8 to 10, adjusted spacing
 
     ax_warehouse = self.fig.add_subplot(gs[0, 0])
     ax_buffer = self.fig.add_subplot(gs[0, 1])
