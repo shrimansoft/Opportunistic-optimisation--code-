@@ -25,7 +25,7 @@ class WarehouseEnv(gym.Env):
         super(WarehouseEnv, self).__init__()
 
         # Initialize the warehouse from the existing warehouse class
-        self.warehouse = warehouse
+        self.warehouse: Warehouse = warehouse
 
         # Define action and observation space
         # Action: Robot can either go to pick a shelf or pick up an item (depending on its state)
