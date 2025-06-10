@@ -111,7 +111,7 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
         spine.set_visible(True)
         spine.set_edgecolor("lightgrey")
 
-    ax_info.set_title("📦 Warehouse Status", fontsize=16, weight="bold", pad=15)
+    ax_info.set_title("WAREHOUSE STATUS", fontsize=16, weight="bold", pad=15)
     info_text = f"Total Stock: {int(total_stock):,} | Orders in Progress: {total_orders} | Completed Orders: {completed_orders}"
     ax_info.text(0.5, 0.85, info_text, ha="center", va="center", fontsize=14, weight="bold", transform=ax_info.transAxes)
 
@@ -140,7 +140,7 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
 
     # --- 5. System Monitor Panel ---
     ax_monitor.axis("off")
-    ax_monitor.set_title("📊 System Monitor & Performance Metrics", fontsize=16, weight="bold", pad=20)
+    ax_monitor.set_title("SYSTEM MONITOR & PERFORMANCE METRICS", fontsize=16, weight="bold", pad=20)
 
     # Performance calculations
     avg_delay = self.average_delay()
@@ -155,7 +155,7 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
     # Left side: Warehouse performance
     robot_status_lines = []
     for r in self.robots:
-        mode_map = {0: "🟢 Idle", 1: "🔵 →Shelf", 2: "🟠 →Station", 3: "🔴 →Return"}
+        mode_map = {0: "[IDLE]", 1: "[->SHELF]", 2: "[->STATION]", 3: "[->RETURN]"}
         shelf_info = f"Shelf{r.shelf:<3}" if r.shelf else "No Shelf "
         # Added color and better text for robot time status
         if r.time_left > 0:
@@ -169,12 +169,12 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
 
     left_metrics_header = f"""WAREHOUSE PERFORMANCE
 ──────────────────────────
-🔢 Step: {step_number:<7,} | ⏰ Time: {self.time:<5,}
-⚡ Avg Delay: {avg_delay:.2f} steps
-📈 Throughput: {throughput:.3f} ord/step
-🤖 Robot Utilization: {robot_util:.1f}%
-💾 Buffer Fill: {buffer_fill:.1f}% ({total_buffer_items}/{total_buffer_capacity})
-🎯 Buffer Hit Rate: {hit_rate:.1f}%
+STEP: {step_number:<7,} | TIME: {self.time:<5,}
+Avg Delay: {avg_delay:.2f} steps
+Throughput: {throughput:.3f} ord/step
+Robot Utilization: {robot_util:.1f}%
+Buffer Fill: {buffer_fill:.1f}% ({total_buffer_items}/{total_buffer_capacity})
+Buffer Hit Rate: {hit_rate:.1f}%
 """
     ax_monitor.text(0.02, 0.98, left_metrics_header, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
 
@@ -199,9 +199,9 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
         ax_monitor.text(0.52, 0.98, system_header, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
 
         metrics_data = [
-            ("🖥️ CPU Usage", f"{cpu:.1f}%", cpu),
-            ("🧠 Memory", f"{mem.percent:.1f}%", mem.percent),
-            ("💿 Disk Usage", f"{disk.percent:.1f}%", disk.percent),
+            ("CPU Usage", f"{cpu:.1f}%", cpu),
+            ("Memory", f"{mem.percent:.1f}%", mem.percent),
+            ("Disk Usage", f"{disk.percent:.1f}%", disk.percent),
         ]
 
         bar_h = 0.04
@@ -217,7 +217,7 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
             ax_monitor.add_patch(patches.Rectangle((bar_x, y_pos - 0.01), bar_w, bar_h, facecolor="#e0e0e0", transform=ax_monitor.transAxes, zorder=1))
             ax_monitor.add_patch(patches.Rectangle((bar_x, y_pos - 0.01), bar_w * (percent / 100), bar_h, facecolor=color, transform=ax_monitor.transAxes, zorder=2))
 
-        ax_monitor.text(0.52, 0.64, f"⚖️ System Load: {load:.2f}", transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
+        ax_monitor.text(0.52, 0.64, f"System Load: {load:.2f}", transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
 
         # Recent Performance section
         perf_header = "\n\nRECENT PERFORMANCE\n───────────────────"
