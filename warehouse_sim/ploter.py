@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 # Configure matplotlib for interactive plotting
 plt.ion()
 # Disable toolbar to prevent TclError issues
-matplotlib.rcParams['toolbar'] = 'None'
+matplotlib.rcParams["toolbar"] = "None"
 
 
 def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
@@ -39,13 +39,17 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
 
     # Create figure only once for interactive mode
     if self.fig is None:
-        self.fig = plt.figure(figsize=(22, 26), facecolor="#f0f0f0")  # Increased from (18, 22)
+        self.fig = plt.figure(
+            figsize=(22, 26), facecolor="#f0f0f0"
+        )  # Increased from (18, 22)
         plt.show(block=False)  # Non-blocking show
     # Clear only the content, not the figure
     self.fig.clear()
 
     # --- 2. Figure and Layout Setup ---
-    gs = GridSpec(4, 2, figure=self.fig, height_ratios=[10, 2.5, 6, 1], hspace=0.5, wspace=0.2)  # Increased first ratio from 8 to 10, adjusted spacing
+    gs = GridSpec(
+        4, 2, figure=self.fig, height_ratios=[10, 2.5, 6, 1], hspace=0.5, wspace=0.2
+    )  # Increased first ratio from 8 to 10, adjusted spacing
 
     ax_warehouse = self.fig.add_subplot(gs[0, 0])
     ax_buffer = self.fig.add_subplot(gs[0, 1])
@@ -58,10 +62,16 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
         ax.set_facecolor("white")
 
     # --- 3. Plot Main Visuals ---
-    cmap = mcolors.ListedColormap(["#ffffff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#3182bd", "#08519c"])
+    cmap = mcolors.ListedColormap(
+        ["#ffffff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#3182bd", "#08519c"]
+    )
     norm = mcolors.BoundaryNorm(np.arange(0, 8), cmap.N)
     ax_warehouse.imshow(warehouse_layout, cmap=cmap, norm=norm, interpolation="nearest")
-    ax_buffer.imshow(shelf_buffer_layout, cmap=mcolors.ListedColormap(["#ffffff", "#08519c"]), interpolation="nearest")
+    ax_buffer.imshow(
+        shelf_buffer_layout,
+        cmap=mcolors.ListedColormap(["#ffffff", "#08519c"]),
+        interpolation="nearest",
+    )
 
     def style_main_ax(ax, title):
         ax.set_xticks(np.arange(0, 20, 2))
@@ -89,7 +99,16 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
                 color = "purple"
         for ax in [ax_warehouse, ax_buffer]:
             ax.plot(y, x, "s", ms=12, color=color, mec="black", mew=2)
-            ax.text(y, x, f"{i}", color="white", fontsize=8, ha="center", va="center", weight="bold")
+            ax.text(
+                y,
+                x,
+                f"{i}",
+                color="white",
+                fontsize=8,
+                ha="center",
+                va="center",
+                weight="bold",
+            )
 
     # Plot robots
     for robot in self.robots:
@@ -97,11 +116,27 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
         color = {0: "green", 1: "blue", 2: "orange", 3: "red"}.get(robot.mode, "black")
         for ax in [ax_warehouse, ax_buffer]:
             ax.plot(y, x, "o", markersize=8, color=color, mec="white", mew=0.5)
-            ax.text(y, x, f"{robot.robot_id}", color="white", fontsize=5, ha="center", va="center")
+            ax.text(
+                y,
+                x,
+                f"{robot.robot_id}",
+                color="white",
+                fontsize=5,
+                ha="center",
+                va="center",
+            )
         if robot.shelf_location:
             sy, sx = robot.shelf_location[0] - 1, robot.shelf_location[1] - 1
             ax_buffer.plot(sx, sy, "D", markersize=8, color="#08519c")
-            ax_buffer.text(sx, sy, f"{robot.robot_id}", color="white", fontsize=5, ha="center", va="center")
+            ax_buffer.text(
+                sx,
+                sy,
+                f"{robot.robot_id}",
+                color="white",
+                fontsize=5,
+                ha="center",
+                va="center",
+            )
 
     # --- 4. General Information Panel ---
     ax_info.axis("off")
@@ -112,10 +147,24 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
 
     ax_info.set_title("WAREHOUSE STATUS", fontsize=16, weight="bold", pad=15)
     info_text = f"Total Stock: {int(total_stock):,} | Orders in Progress: {total_orders} | Completed Orders: {completed_orders}"
-    ax_info.text(0.5, 0.85, info_text, ha="center", va="center", fontsize=14, weight="bold", transform=ax_info.transAxes)
+    ax_info.text(
+        0.5,
+        0.85,
+        info_text,
+        ha="center",
+        va="center",
+        fontsize=14,
+        weight="bold",
+        transform=ax_info.transAxes,
+    )
 
     # Re-organized payload and buffer info into a more compact 3-column layout
-    robot_shelf_info = [f"R{r.robot_id} → Shelf {r.shelf}" if r.shelf is not None else f"R{r.robot_id} (Idle)" for r in self.robots]
+    robot_shelf_info = [
+        f"R{r.robot_id} → Shelf {r.shelf}"
+        if r.shelf is not None
+        else f"R{r.robot_id} (Idle)"
+        for r in self.robots
+    ]
     mid_point = (len(robot_shelf_info) + 1) // 2
 
     payload_col1 = "Robot Payloads:\n" + "\n".join(robot_shelf_info[:mid_point])
@@ -123,7 +172,11 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
 
     buffer_lines = ["Picking Station Buffers:"]
     for i, station in enumerate(self.picking_stations):
-        status = "DISABLED" if not station.buffer_enabled else f"{len(station.buffer)}/{station.buffer_size} items"
+        status = (
+            "DISABLED"
+            if not station.buffer_enabled
+            else f"{len(station.buffer)}/{station.buffer_size} items"
+        )
         buffer_lines.append(f"PS{i}: {status}")
         # Truncate long buffer lists
         if station.buffer:
@@ -133,20 +186,53 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
             buffer_lines.append(f"  └> {buffer_str}")
     buffer_col = "\n".join(buffer_lines)
 
-    ax_info.text(0.05, 0.6, payload_col1, ha="left", va="top", fontsize=11, fontfamily="monospace", transform=ax_info.transAxes)
-    ax_info.text(0.35, 0.6, payload_col2, ha="left", va="top", fontsize=11, fontfamily="monospace", transform=ax_info.transAxes)
-    ax_info.text(0.65, 0.6, buffer_col, ha="left", va="top", fontsize=11, fontfamily="monospace", transform=ax_info.transAxes)
+    ax_info.text(
+        0.05,
+        0.6,
+        payload_col1,
+        ha="left",
+        va="top",
+        fontsize=11,
+        fontfamily="monospace",
+        transform=ax_info.transAxes,
+    )
+    ax_info.text(
+        0.35,
+        0.6,
+        payload_col2,
+        ha="left",
+        va="top",
+        fontsize=11,
+        fontfamily="monospace",
+        transform=ax_info.transAxes,
+    )
+    ax_info.text(
+        0.65,
+        0.6,
+        buffer_col,
+        ha="left",
+        va="top",
+        fontsize=11,
+        fontfamily="monospace",
+        transform=ax_info.transAxes,
+    )
 
     # --- 5. System Monitor Panel ---
     ax_monitor.axis("off")
-    ax_monitor.set_title("SYSTEM MONITOR & PERFORMANCE METRICS", fontsize=16, weight="bold", pad=20)
+    ax_monitor.set_title(
+        "SYSTEM MONITOR & PERFORMANCE METRICS", fontsize=16, weight="bold", pad=20
+    )
 
     # Performance calculations
     avg_delay = self.average_delay()
     throughput = completed_orders / max(self.time, 1)
-    robot_util = len([r for r in self.robots if not r.available]) / len(self.robots) * 100
+    robot_util = (
+        len([r for r in self.robots if not r.available]) / len(self.robots) * 100
+    )
     total_buffer_items = sum(len(s.buffer) for s in self.picking_stations)
-    total_buffer_capacity = sum(s.buffer_size for s in self.picking_stations if s.buffer_enabled)
+    total_buffer_capacity = sum(
+        s.buffer_size for s in self.picking_stations if s.buffer_enabled
+    )
     buffer_fill = (total_buffer_items / max(total_buffer_capacity, 1)) * 100
     buffer_hits = len([o for o in self.order_compleated if o.delay == 0])
     hit_rate = (buffer_hits / max(completed_orders, 1)) * 100
@@ -163,7 +249,9 @@ def ploter(self, frame_dir=None, step_number=None, pause_time=0.1):
         else:
             time_info = "Ready"
             time_color = "green"
-        status_line = f"  • R{r.robot_id}: {mode_map.get(r.mode, 'Unknown')} | {shelf_info} | "
+        status_line = (
+            f"  • R{r.robot_id}: {mode_map.get(r.mode, 'Unknown')} | {shelf_info} | "
+        )
         robot_status_lines.append((status_line, time_info, time_color))
 
     left_metrics_header = f"""WAREHOUSE PERFORMANCE
@@ -175,15 +263,49 @@ Robot Utilization: {robot_util:.1f}%
 Buffer Fill: {buffer_fill:.1f}% ({total_buffer_items}/{total_buffer_capacity})
 Buffer Hit Rate: {hit_rate:.1f}%
 """
-    ax_monitor.text(0.02, 0.98, left_metrics_header, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
+    ax_monitor.text(
+        0.02,
+        0.98,
+        left_metrics_header,
+        transform=ax_monitor.transAxes,
+        fontsize=11,
+        va="top",
+        fontfamily="monospace",
+    )
 
     robot_header = "ROBOT STATUS\n───────────"
-    ax_monitor.text(0.02, 0.45, robot_header, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
+    ax_monitor.text(
+        0.02,
+        0.45,
+        robot_header,
+        transform=ax_monitor.transAxes,
+        fontsize=11,
+        va="top",
+        fontfamily="monospace",
+    )
 
     current_y = 0.38
     for base_text, time_text, time_color in robot_status_lines:
-        ax_monitor.text(0.02, current_y, base_text, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
-        ax_monitor.text(0.32, current_y, time_text, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace", color=time_color, weight="bold")
+        ax_monitor.text(
+            0.02,
+            current_y,
+            base_text,
+            transform=ax_monitor.transAxes,
+            fontsize=11,
+            va="top",
+            fontfamily="monospace",
+        )
+        ax_monitor.text(
+            0.32,
+            current_y,
+            time_text,
+            transform=ax_monitor.transAxes,
+            fontsize=11,
+            va="top",
+            fontfamily="monospace",
+            color=time_color,
+            weight="bold",
+        )
         current_y -= 0.05
 
     # Right side: System resources
@@ -195,7 +317,15 @@ Buffer Hit Rate: {hit_rate:.1f}%
 
         # Major refactor to create a clean, table-like layout for system stats and progress bars
         system_header = "SYSTEM MONITOR\n──────────────────────────"
-        ax_monitor.text(0.52, 0.98, system_header, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
+        ax_monitor.text(
+            0.52,
+            0.98,
+            system_header,
+            transform=ax_monitor.transAxes,
+            fontsize=11,
+            va="top",
+            fontfamily="monospace",
+        )
 
         metrics_data = [
             ("CPU Usage", f"{cpu:.1f}%", cpu),
@@ -207,20 +337,71 @@ Buffer Hit Rate: {hit_rate:.1f}%
         for i, (label, value, percent) in enumerate(metrics_data):
             y_pos = 0.88 - i * 0.08
             # Metric Label and Value
-            ax_monitor.text(0.52, y_pos, label, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
-            ax_monitor.text(0.70, y_pos, value, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace", weight="bold")
+            ax_monitor.text(
+                0.52,
+                y_pos,
+                label,
+                transform=ax_monitor.transAxes,
+                fontsize=11,
+                va="top",
+                fontfamily="monospace",
+            )
+            ax_monitor.text(
+                0.70,
+                y_pos,
+                value,
+                transform=ax_monitor.transAxes,
+                fontsize=11,
+                va="top",
+                fontfamily="monospace",
+                weight="bold",
+            )
 
             # Progress Bar
             bar_x, bar_w = 0.78, 0.20
             color = "red" if percent > 85 else "orange" if percent > 65 else "limegreen"
-            ax_monitor.add_patch(patches.Rectangle((bar_x, y_pos - 0.01), bar_w, bar_h, facecolor="#e0e0e0", transform=ax_monitor.transAxes, zorder=1))
-            ax_monitor.add_patch(patches.Rectangle((bar_x, y_pos - 0.01), bar_w * (percent / 100), bar_h, facecolor=color, transform=ax_monitor.transAxes, zorder=2))
+            ax_monitor.add_patch(
+                patches.Rectangle(
+                    (bar_x, y_pos - 0.01),
+                    bar_w,
+                    bar_h,
+                    facecolor="#e0e0e0",
+                    transform=ax_monitor.transAxes,
+                    zorder=1,
+                )
+            )
+            ax_monitor.add_patch(
+                patches.Rectangle(
+                    (bar_x, y_pos - 0.01),
+                    bar_w * (percent / 100),
+                    bar_h,
+                    facecolor=color,
+                    transform=ax_monitor.transAxes,
+                    zorder=2,
+                )
+            )
 
-        ax_monitor.text(0.52, 0.64, f"System Load: {load:.2f}", transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
+        ax_monitor.text(
+            0.52,
+            0.64,
+            f"System Load: {load:.2f}",
+            transform=ax_monitor.transAxes,
+            fontsize=11,
+            va="top",
+            fontfamily="monospace",
+        )
 
         # Recent Performance section
         perf_header = "\n\nRECENT PERFORMANCE\n───────────────────"
-        ax_monitor.text(0.52, 0.55, perf_header, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
+        ax_monitor.text(
+            0.52,
+            0.55,
+            perf_header,
+            transform=ax_monitor.transAxes,
+            fontsize=11,
+            va="top",
+            fontfamily="monospace",
+        )
 
         if completed_orders > 0:
             recent_delays = str([order.delay for order in self.order_compleated[-10:]])
@@ -230,32 +411,122 @@ Buffer Hit Rate: {hit_rate:.1f}%
 
         if total_orders > 0 and len(self.robots) > 0:
             avg_robot_time = sum(r.time_left for r in self.robots) / len(self.robots)
-            expected_delay = max(0, avg_robot_time + (total_orders / len(self.robots)) * 2)
+            expected_delay = max(
+                0, avg_robot_time + (total_orders / len(self.robots)) * 2
+            )
             perf_text += f"• Expected Delay: {expected_delay:.1f} steps"
         else:
             perf_text += "• Expected Delay: 0.0 steps"
 
-        ax_monitor.text(0.53, 0.40, perf_text, transform=ax_monitor.transAxes, fontsize=11, va="top", fontfamily="monospace")
+        ax_monitor.text(
+            0.53,
+            0.40,
+            perf_text,
+            transform=ax_monitor.transAxes,
+            fontsize=11,
+            va="top",
+            fontfamily="monospace",
+        )
 
     except Exception as e:
-        ax_monitor.text(0.52, 0.9, f"System monitoring unavailable.\nError: {e}", transform=ax_monitor.transAxes, fontsize=11, va="top", bbox=dict(facecolor="lightcoral"))
+        ax_monitor.text(
+            0.52,
+            0.9,
+            f"System monitoring unavailable.\nError: {e}",
+            transform=ax_monitor.transAxes,
+            fontsize=11,
+            va="top",
+            bbox=dict(facecolor="lightcoral"),
+        )
 
     # --- 6. Legend ---
     ax_legend.axis("off")
     legend_elements = [
-        Line2D([0], [0], marker="o", color="w", label="Idle", markerfacecolor="green", markersize=10),
-        Line2D([0], [0], marker="o", color="w", label="To Shelf", markerfacecolor="blue", markersize=10),
-        Line2D([0], [0], marker="o", color="w", label="To Station", markerfacecolor="orange", markersize=10),
-        Line2D([0], [0], marker="o", color="w", label="Returning", markerfacecolor="red", markersize=10),
-        Line2D([0], [0], marker="s", color="w", label="Low Buffer", markerfacecolor="purple", markersize=10),
-        Line2D([0], [0], marker="s", color="w", label="Half Full", markerfacecolor="orange", markersize=10),
-        Line2D([0], [0], marker="s", color="w", label="Nearly Full", markerfacecolor="red", markersize=10),
-        Line2D([0], [0], marker="s", color="w", label="Disabled", markerfacecolor="dimgray", markersize=10),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="Idle",
+            markerfacecolor="green",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="To Shelf",
+            markerfacecolor="blue",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="To Station",
+            markerfacecolor="orange",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            label="Returning",
+            markerfacecolor="red",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="s",
+            color="w",
+            label="Low Buffer",
+            markerfacecolor="purple",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="s",
+            color="w",
+            label="Half Full",
+            markerfacecolor="orange",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="s",
+            color="w",
+            label="Nearly Full",
+            markerfacecolor="red",
+            markersize=10,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="s",
+            color="w",
+            label="Disabled",
+            markerfacecolor="dimgray",
+            markersize=10,
+        ),
     ]
-    ax_legend.legend(handles=legend_elements, loc="center", ncol=8, fontsize=12, title_fontproperties={"weight": "bold", "size": 14})
+    ax_legend.legend(
+        handles=legend_elements,
+        loc="center",
+        ncol=8,
+        fontsize=12,
+        title_fontproperties={"weight": "bold", "size": 14},
+    )
 
     # --- 7. Final Touches ---
-    self.fig.suptitle(f"Warehouse Simulation - Step {step_number}", fontsize=24, weight="bold", y=0.99)
+    self.fig.suptitle(
+        f"Warehouse Simulation - Step {step_number}", fontsize=24, weight="bold", y=0.99
+    )
     self.fig.tight_layout(rect=(0, 0, 1, 0.97))
 
     if self.interactive_mode:
