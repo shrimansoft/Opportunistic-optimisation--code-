@@ -4,8 +4,7 @@ import numpy as np
 
 from .ploter import ploter
 
-# Set backend before importing pyplot to avoid TclError issues
-matplotlib.use("TkAgg")  # Use TkAgg backend for better interactive support
+matplotlib.use("TkAgg")  # its for intteractive plots.
 
 
 from typing import List
@@ -52,7 +51,6 @@ class Warehouse:
         ]
         # self.robots = [Robot(self,1)]
 
-        # Initialize figure for interactive plotting
         self.fig = None
         self.interactive_mode = False
 
