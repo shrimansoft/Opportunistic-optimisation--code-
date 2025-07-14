@@ -399,8 +399,8 @@ class Warehouse:
 
     def order_step(self):
         self.time += 1
-        if self.time % 1000 == 0:
-            print("Total average_dealy: ", self.average_delay())
+        # if self.time % 1000 == 0:
+        #     print("Total average_dealy: ", self.average_delay())
         if np.random.random() < 0.3:
             available = self.available()
             samples = self.sample()
@@ -424,7 +424,7 @@ class Warehouse:
                             print(
                                 f"Order for item {samples} fulfilled immediately from picking station buffer"
                             )
-                            print("Total stock >> ", self.stock.sum())
+                            # print("Total stock >> ", self.stock.sum())
                             break
 
                 # If item not found in buffer, create regular order
@@ -433,7 +433,7 @@ class Warehouse:
                     self.itemShelfsBufferSet.add(shelf)
                     self.order_buffer.append(OrderItem(samples, self.time, shelf))
                     self.shelfs[shelf].remove(samples)
-                    print("Total stock >> ", self.stock.sum())
+                    # print("Total stock >> ", self.stock.sum())
                     self.stock[samples] -= 1
 
     def robot_assigner(self):

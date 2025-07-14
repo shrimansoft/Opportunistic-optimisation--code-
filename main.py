@@ -27,7 +27,7 @@ class WarehouseEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=1, shape=(400,), dtype=np.int32)
 
         # The maximum number of steps per episode (time steps)
-        self.max_steps = 1000
+        self.max_steps = 10000
         self.current_step = 0
 
     def reset(self, seed=None, options=None):
@@ -128,7 +128,6 @@ def main():
     """
     Main function demonstrating RWare-style warehouse layouts
     """
-    # Set seed for reproducibility
     SEED = 42
     set_seed(SEED)
     
@@ -136,7 +135,8 @@ def main():
     print("=" * 50)
 
     # Test different RWare layout sizes
-    layout_sizes = ["tiny", "small", "medium", "large"]
+    # layout_sizes = ["tiny", "small", "medium", "large"]
+    layout_sizes = ["tiny"]
     
     for i, layout_size in enumerate(layout_sizes):
         print(f"\n=== Demo {i+1}/4: {layout_size.upper()} warehouse layout ===")
@@ -164,7 +164,7 @@ def main():
         total_reward = 0
         
         # Run shorter simulation for demo
-        for step in range(20):
+        for step in range(200):
             # Warehouse operations
             warehouse.order_step()
             warehouse.robot_assigner()
@@ -201,38 +201,6 @@ def main():
     print("RWare layout demo completed!")
     print("All standard layout sizes (tiny, small, medium, large) tested.")
     
-    # Optional: Test custom layout
-    print("\n=== Bonus: Custom Layout Demo ===")
-    custom_layout = """
-..........
-.XX.XX.XX.
-.XX.XX.XX.
-..........
-.XX.XX.XX.
-.XX.XX.XX.
-..........
-....gg....
-"""
-    
-    try:
-        custom_warehouse = Warehouse(
-            seed=SEED + 99,
-            custom_layout=custom_layout.strip(),
-            buffer_enabled=True
-        )
-        
-        print(f"Custom grid size: {custom_warehouse.grid_size}")
-        print(f"Custom goals: {custom_warehouse.goals}")
-        
-        custom_env = WarehouseEnv(custom_warehouse)
-        custom_env.reset()
-        custom_env.render()
-        print("✓ Custom layout demo successful")
-        
-    except Exception as e:
-        print(f"✗ Custom layout error: {e}")
-    
-    print("\nDemo complete. Close plot windows to exit.")
     input("Press Enter to exit...")
 
 
