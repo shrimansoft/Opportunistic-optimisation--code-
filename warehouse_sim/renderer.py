@@ -1,118 +1,83 @@
 """
 RWare-style visual renderer for the warehouse simulation.
-This renderer provides multiple backends: matplotlib (stable), pygame (performance), and pyglet (future).
+This renderer uses pyglet for fast, hardware-accelerated graphics.
 """
 
 import numpy as np
-from typing import Optional, TYPE_CHECKING, Any, Literal
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.patches import Rectangle, Circle, FancyBboxPatch
-import matplotlib.patheffects as pe
+from typing import Optional, TYPE_CHECKING, Any, Literal, Tuple
+import pyglet
+from pyglet import gl
+from pyglet.graphics import Batch
+from pyglet.text import Label
+from pyglet.shapes import Rectangle, Circle, Line
+import datetime
 
 if TYPE_CHECKING:
     from .warehouse import Warehouse
 
-# RWare color scheme (hex colors for matplotlib)
+# RWare color scheme (RGB colors for pyglet)
 RWARE_COLORS = {
-    'background': '#FFFFFF',
-    'grid_lines': '#000000', 
-    'highway': '#E8E8E8',
-    'shelf': '#484D6D',  # Dark slate blue
-    'shelf_requested': '#008080',  # Teal
-    'robot_idle': '#FF8C00',  # Dark orange
-    'robot_busy': '#FF0000',  # Red
-    'robot_direction': '#000000',
-    'goal': '#3C3C3C',  # Dark gray
-    'picking_station': '#800080',  # Purple
-    'text_primary': '#FFFFFF',
-    'text_secondary': '#000000',
-    'info_panel': '#F0F0F0'
+    'background': (255, 255, 255),      # White
+    'grid_lines': (0, 0, 0),            # Black
+    'highway': (232, 232, 232),         # Light gray
+    'shelf': (72, 77, 109),             # Dark slate blue
+    'shelf_requested': (0, 128, 128),   # Teal
+    'robot_idle': (255, 140, 0),        # Dark orange
+    'robot_busy': (255, 0, 0),          # Red
+    'robot_direction': (0, 0, 0),       # Black
+    'goal': (60, 60, 60),               # Dark gray
+    'picking_station': (128, 0, 128),   # Purple
+    'text_primary': (255, 255, 255),    # White
+    'text_secondary': (0, 0, 0),        # Black
+    'info_panel': (240, 240, 240)       # Light gray
 }
 
+def hex_to_rgb(hex_color: str) -> Tuple[int, int, int]:
+    """Convert hex color to RGB tuple."""
+    hex_color = hex_color.lstrip('#')
+    rgb_tuple = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    return (rgb_tuple[0], rgb_tuple[1], rgb_tuple[2])
 
-class RWareStyleRenderer:
-    """Enhanced matplotlib renderer that closely mimics RWare's visual style."""
+def rgb_to_gl(rgb: Tuple[int, int, int]) -> Tuple[float, float, float]:
+    """Convert RGB tuple to OpenGL color values (0.0-1.0)."""
+    return (rgb[0] / 255.0, rgb[1] / 255.0, rgb[2] / 255.0)
+
+
+class PygletWindow(pyglet.window.Window):
+    """Pyglet window for warehouse rendering."""
     
-    def __init__(self, warehouse: 'Warehouse', cell_size: float = 0.8, fig_scale: float = 0.8):
-        """
-        Initialize the RWare-style renderer.
-        
-        Args:
-            warehouse: Warehouse instance to render
-            cell_size: Size of cells relative to grid (0.0-1.0) 
-            fig_scale: Scale factor for figure size
-        """
+    def __init__(self, warehouse: 'Warehouse', cell_size: int = 40, **kwargs):
         self.warehouse = warehouse
         self.cell_size = cell_size
-        self.fig_scale = fig_scale
-        self.fig = None
-        self.ax = None
-        self.setup_plot()
+        self.rows, self.cols = warehouse.grid_size
+        
+        # Calculate window size
+        window_width = self.cols * cell_size + 100  # Extra space for padding
+        window_height = self.rows * cell_size + 200  # Extra space for info panel
+        
+        super().__init__(width=window_width, height=window_height, **kwargs)
+        
+        # Initialize rendering components
+        self.batch = Batch()
+        self.labels = []
+        
+        # Set background color
+        gl.glClearColor(*rgb_to_gl(RWARE_COLORS['background']), 1.0)
+        
+        # Store shape objects for drawing
+        self.shapes = []
     
-    def setup_plot(self):
-        """Setup matplotlib figure with enhanced RWare styling and performance optimizations."""
-        rows, cols = self.warehouse.grid_size
+    def on_draw(self):
+        """Draw the warehouse."""
+        self.clear()
         
-        # Calculate optimized figure size for better visual quality
-        fig_width = max(8, cols * self.fig_scale + 2)
-        fig_height = max(6, rows * self.fig_scale + 4.2)  # Extra space for two-row info panel
+        # Clear previous shapes and labels
+        self.shapes.clear()
+        for label in self.labels:
+            label.delete()
+        self.labels.clear()
         
-        # Create figure with high DPI for crisp rendering
-        self.fig, self.ax = plt.subplots(figsize=(fig_width, fig_height), dpi=100)
-        
-        # Set grid bounds with optimized padding
-        self.ax.set_xlim(-0.6, cols - 0.4)
-        self.ax.set_ylim(-2.5, rows - 0.4)  # Expanded space for two-row info panel
-        self.ax.set_aspect('equal')
-        
-        # RWare uses inverted Y (0,0 at top-left)
-        self.ax.invert_yaxis()
-        
-        # Enhanced clean styling
-        self.ax.set_xticks([])
-        self.ax.set_yticks([])
-        for spine in self.ax.spines.values():
-            spine.set_visible(False)
-        
-        # Premium background setup
-        self.fig.patch.set_facecolor(RWARE_COLORS['background'])
-        self.ax.set_facecolor(RWARE_COLORS['background'])
-        
-        # Enable interactive mode with better performance
-        plt.ion()
-        plt.tight_layout(pad=0.5)
-    
-    def render(self, mode: str = "human", pause_time: float = 0.05) -> Optional[np.ndarray]:
-        """
-        Render warehouse with enhanced RWare-style visuals and improved performance.
-        
-        Args:
-            mode: 'human' for display, 'rgb_array' for array output
-            pause_time: Pause duration between frames
-            
-        Returns:
-            RGB array if mode='rgb_array', None otherwise
-        """
-        if self.fig is None:
-            self.setup_plot()
-        
-        # Clear and reset with enhanced bounds
-        self.ax.clear()
-        self.ax.set_facecolor(RWARE_COLORS['background'])
-        rows, cols = self.warehouse.grid_size
-        self.ax.set_xlim(-0.6, cols - 0.4)
-        self.ax.set_ylim(-2.5, rows - 0.4)  # Expanded for two-row info panel
-        self.ax.set_aspect('equal')
-        self.ax.invert_yaxis()
-        self.ax.set_xticks([])
-        self.ax.set_yticks([])
-        
-        # Hide spines for clean look
-        for spine in self.ax.spines.values():
-            spine.set_visible(False)
-        
-        # Draw components in optimized order for better layering
+        # Draw components
         self._draw_grid()
         self._draw_highways()
         self._draw_shelves()
@@ -120,71 +85,46 @@ class RWareStyleRenderer:
         self._draw_robots()
         self._draw_info_panel()
         
-        # Add subtle title/branding
-        self.ax.text(cols - 0.5, rows - 0.3, "Enhanced RWare Renderer", 
-                    ha='right', va='top', fontsize=8, 
-                    color='#999999', style='italic', alpha=0.7, zorder=1)
+        # Draw all shapes
+        for shape in self.shapes:
+            shape.draw()
         
-        # Handle output with optimized rendering
-        if mode == "human":
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            plt.pause(pause_time)
-            return None
-        elif mode == "rgb_array":
-            import io
-            self.fig.canvas.draw()
-            buf = io.BytesIO()
-            self.fig.savefig(buf, format='png', bbox_inches='tight', 
-                           dpi=100, facecolor='white', edgecolor='none')
-            buf.seek(0)
-            from PIL import Image
-            img = Image.open(buf)
-            return np.array(img)[:, :, :3]  # Remove alpha if present
-        
-        return None
+        # Draw all labels
+        for label in self.labels:
+            label.draw()
     
     def _draw_grid(self):
-        """Draw subtle grid lines like RWare."""
-        rows, cols = self.warehouse.grid_size
+        """Draw grid lines."""
+        color = rgb_to_gl(RWARE_COLORS['grid_lines'])
         
         # Vertical lines
-        for x in range(cols + 1):
-            self.ax.axvline(x - 0.5, color=RWARE_COLORS['grid_lines'], 
-                           linewidth=0.5, alpha=0.2, zorder=0)
+        for x in range(self.cols + 1):
+            x_pos = x * self.cell_size + 50  # 50px padding
+            y_start = 50
+            y_end = self.rows * self.cell_size + 50
+            self._draw_line(x_pos, y_start, x_pos, y_end, color, alpha=0.2)
         
         # Horizontal lines
-        for y in range(rows + 1):
-            self.ax.axhline(y - 0.5, color=RWARE_COLORS['grid_lines'], 
-                           linewidth=0.5, alpha=0.2, zorder=0)
+        for y in range(self.rows + 1):
+            y_pos = y * self.cell_size + 50
+            x_start = 50
+            x_end = self.cols * self.cell_size + 50
+            self._draw_line(x_start, y_pos, x_end, y_pos, color, alpha=0.2)
     
     def _draw_highways(self):
-        """Draw highway cells with light gray background."""
-        rows, cols = self.warehouse.grid_size
+        """Draw highway cells."""
+        color = rgb_to_gl(RWARE_COLORS['highway'])
         
-        for y in range(rows):
-            for x in range(cols):
+        for y in range(self.rows):
+            for x in range(self.cols):
                 if self.warehouse._is_highway(x, y):
-                    rect = Rectangle(
-                        (x - 0.5, y - 0.5), 1, 1,
-                        facecolor=RWARE_COLORS['highway'],
-                        edgecolor='none',
-                        alpha=0.6,
-                        zorder=1
-                    )
-                    self.ax.add_patch(rect)
+                    x_pos = x * self.cell_size + 50
+                    y_pos = (self.rows - 1 - y) * self.cell_size + 50  # Flip Y
+                    self._draw_rect(x_pos, y_pos, self.cell_size, self.cell_size, color, alpha=0.6)
     
     def _draw_shelves(self):
-        """Draw shelves with enhanced visual styling and responsive text."""
-        rows, cols = self.warehouse.grid_size
-        
-        # Calculate responsive font sizes for shelf labels
-        shelf_font_scale = min(cols, rows) * self.fig_scale * 0.12
-        shelf_id_font = max(5, min(8, shelf_font_scale * 0.8))
-        shelf_item_font = max(8, min(14, shelf_font_scale * 1.4))
-        shelf_robot_font = max(6, min(10, shelf_font_scale * 1.0))
-        
-        # Create a mapping of shelf to assigned robot
+        """Draw shelves with items and robot assignments."""
+        # Create mapping of shelf to assigned robot
         shelf_to_robot = {}
         for robot in self.warehouse.robots:
             if robot.shelf is not None:
@@ -192,238 +132,179 @@ class RWareStyleRenderer:
         
         for shelf_idx, shelf_items in enumerate(self.warehouse.shelfs):
             # Convert flat index to grid coordinates
-            y = shelf_idx // cols  # Row (y-coordinate)
-            x = shelf_idx % cols   # Column (x-coordinate)
+            y = shelf_idx // self.cols
+            x = shelf_idx % self.cols
             
-            # Skip highways and out-of-bounds positions
-            if x >= cols or y >= rows or self.warehouse._is_highway(x, y):
+            # Skip highways and out-of-bounds
+            if x >= self.cols or y >= self.rows or self.warehouse._is_highway(x, y):
                 continue
             
-            # Only draw shelves that are supposed to be shelf locations
             if not self._is_shelf_position(x, y):
                 continue
-                
-            num_items = len(shelf_items)
             
-            # Enhanced color scheme with better visual hierarchy
+            num_items = len(shelf_items)
             is_requested = shelf_idx in self.warehouse.itemShelfsBufferSet
-            has_items = num_items > 0
             has_robot = shelf_idx in shelf_to_robot
             
+            # Determine colors
             if is_requested and has_robot:
-                color = '#00CED1'  # Dark turquoise - requested with robot assigned
-                border_color = '#FFD700'  # Gold border for active assignment
+                color = hex_to_rgb('#00CED1')  # Dark turquoise
+                border_color = hex_to_rgb('#FFD700')  # Gold
             elif is_requested:
-                color = RWARE_COLORS['shelf_requested']  # Teal for requested shelves
-                border_color = '#FF6347'  # Tomato border for urgent
+                color = RWARE_COLORS['shelf_requested']  # Teal
+                border_color = hex_to_rgb('#FF6347')  # Tomato
             elif has_robot:
-                color = '#8A2BE2'  # Blue violet - robot assigned but not requested
-                border_color = '#32CD32'  # Lime border for assigned
-            elif has_items:
-                color = RWARE_COLORS['shelf']  # Dark blue for shelves with items
-                border_color = '#708090'  # Slate gray
+                color = hex_to_rgb('#8A2BE2')  # Blue violet
+                border_color = hex_to_rgb('#32CD32')  # Lime
+            elif num_items > 0:
+                color = RWARE_COLORS['shelf']  # Dark blue
+                border_color = hex_to_rgb('#708090')  # Slate gray
             else:
-                color = '#D3D3D3'  # Light gray for empty shelves
-                border_color = '#A9A9A9'  # Dark gray
+                color = hex_to_rgb('#D3D3D3')  # Light gray
+                border_color = hex_to_rgb('#A9A9A9')  # Dark gray
             
-            # Draw shelf with enhanced styling
-            padding = 0.08
-            rect = Rectangle(
-                (x - 0.5 + padding, y - 0.5 + padding), 
-                1 - 2*padding, 1 - 2*padding,
-                facecolor=color,
-                edgecolor=border_color,
-                linewidth=2 if (is_requested or has_robot) else 1,
-                alpha=0.9,
-                zorder=2
-            )
-            self.ax.add_patch(rect)
+            # Calculate position
+            x_pos = x * self.cell_size + 50 + 3  # Small padding
+            y_pos = (self.rows - 1 - y) * self.cell_size + 50 + 3  # Flip Y + padding
+            size = self.cell_size - 6  # Account for padding
             
-            # Add subtle gradient effect for active shelves
-            if is_requested or has_robot:
-                highlight = Rectangle(
-                    (x - 0.5 + padding, y - 0.5 + padding), 
-                    (1 - 2*padding) * 0.3, 1 - 2*padding,
-                    facecolor='white',
-                    alpha=0.2,
-                    zorder=2.5
-                )
-                self.ax.add_patch(highlight)
+            # Draw shelf rectangle
+            self._draw_rect(x_pos, y_pos, size, size, rgb_to_gl(color), alpha=0.9)
+            self._draw_rect_border(x_pos, y_pos, size, size, rgb_to_gl(border_color), 
+                                 line_width=2 if (is_requested or has_robot) else 1)
             
-            # Enhanced text layout with better readability
-            # Shelf ID (top-left, smaller)
-            self.ax.text(x - 0.3, y - 0.25, f"{shelf_idx}", 
-                       ha='left', va='center',
-                       fontsize=shelf_id_font, fontweight='bold',
-                       color='white' if color != '#D3D3D3' else 'black',
-                       zorder=3,
-                       bbox=dict(boxstyle="round,pad=0.1", 
-                                facecolor='black' if color != '#D3D3D3' else 'white', 
-                                alpha=0.6))
+            # Add text labels
+            center_x = x_pos + size // 2
+            center_y = y_pos + size // 2
             
-            # Item count (center, prominent)
-            item_text = f"{num_items}" if num_items > 0 else "∅"
-            item_color = 'white' if color != '#D3D3D3' else 'black'
-            self.ax.text(x, y, item_text, 
-                       ha='center', va='center',
-                       fontsize=shelf_item_font if num_items > 0 else shelf_item_font * 0.8, 
-                       fontweight='bold',
-                       color=item_color,
-                       zorder=3)
+            # Shelf ID (top-left)
+            id_label = Label(str(shelf_idx), 
+                           font_size=8, 
+                           color=(*RWARE_COLORS['text_primary'], 255),
+                           x=x_pos + 5, y=y_pos + size - 5,
+                           anchor_x='left', anchor_y='top')
+            self.labels.append(id_label)
             
-            # Robot assignment indicator (bottom-right, highlighted)
+            # Item count (center)
+            item_text = str(num_items) if num_items > 0 else "∅"
+            item_color = RWARE_COLORS['text_primary'] if color != hex_to_rgb('#D3D3D3') else RWARE_COLORS['text_secondary']
+            item_label = Label(item_text,
+                             font_size=12,
+                             color=(*item_color, 255),
+                             x=center_x, y=center_y,
+                             anchor_x='center', anchor_y='center')
+            self.labels.append(item_label)
+            
+            # Robot assignment (bottom-right)
             if shelf_idx in shelf_to_robot:
                 robot_id = shelf_to_robot[shelf_idx]
-                robot_text = self.ax.text(x + 0.25, y + 0.25, f"R{robot_id}", 
-                           ha='center', va='center',
-                           fontsize=shelf_robot_font, fontweight='bold',
-                           color='white',
-                           zorder=4,
-                           bbox=dict(boxstyle="round,pad=0.15", 
-                                    facecolor='#FF4500', 
-                                    edgecolor='white',
-                                    linewidth=1,
-                                    alpha=0.95))
-                # Add glow effect for robot assignment
-                robot_text.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
+                robot_label = Label(f"R{robot_id}",
+                                  font_size=8,
+                                  color=(*RWARE_COLORS['text_primary'], 255),
+                                  x=x_pos + size - 5, y=y_pos + 5,
+                                  anchor_x='right', anchor_y='bottom')
+                self.labels.append(robot_label)
             
-            # Priority indicator for urgent requests
+            # Priority indicator for requested shelves
             if is_requested:
-                priority_circle = Circle(
-                    (x - 0.35, y - 0.35), 0.08,
-                    facecolor='red',
-                    edgecolor='white',
-                    linewidth=1.5,
-                    alpha=0.9,
-                    zorder=4
-                )
-                self.ax.add_patch(priority_circle)
-                self.ax.text(x - 0.35, y - 0.35, "!", 
-                           ha='center', va='center',
-                           fontsize=shelf_robot_font, fontweight='bold',
-                           color='white',
-                           zorder=5)
-    
-    def _is_shelf_position(self, x: int, y: int) -> bool:
-        """Check if a position should have a shelf based on warehouse layout."""
-        # This is a simplified check - you might need to adjust based on your specific layout
-        # For now, assume non-highway positions can have shelves
-        return not self.warehouse._is_highway(x, y)
+                priority_x = x_pos + 8
+                priority_y = y_pos + size - 8
+                self._draw_circle(priority_x, priority_y, 4, rgb_to_gl((255, 0, 0)), alpha=0.9)
+                priority_label = Label("!",
+                                     font_size=8,
+                                     color=(255, 255, 255, 255),
+                                     x=priority_x, y=priority_y,
+                                     anchor_x='center', anchor_y='center')
+                self.labels.append(priority_label)
     
     def _draw_goals(self):
-        """Draw picking stations as goals with responsive text."""
-        # Calculate responsive font size for goal labels
-        rows, cols = self.warehouse.grid_size
-        goal_font_scale = min(cols, rows) * self.fig_scale * 0.15
-        goal_font = max(10, min(20, goal_font_scale * 2.0))
+        """Draw picking stations as goals."""
+        color = rgb_to_gl(RWARE_COLORS['goal'])
         
         for station in self.warehouse.picking_stations:
             x, y = station.location
+            x_pos = x * self.cell_size + 50
+            y_pos = (self.rows - 1 - y) * self.cell_size + 50  # Flip Y
             
             # Draw goal rectangle
-            rect = Rectangle(
-                (x - 0.5, y - 0.5), 1, 1,
-                facecolor=RWARE_COLORS['goal'],
-                edgecolor=RWARE_COLORS['grid_lines'],
-                linewidth=2,
-                alpha=0.9,
-                zorder=2
-            )
-            self.ax.add_patch(rect)
+            self._draw_rect(x_pos, y_pos, self.cell_size, self.cell_size, color, alpha=0.9)
+            self._draw_rect_border(x_pos, y_pos, self.cell_size, self.cell_size, 
+                                 rgb_to_gl(RWARE_COLORS['grid_lines']), line_width=2)
             
-            # Add 'G' label with enhanced styling
-            text = self.ax.text(x, y, 'G', 
-                              ha='center', va='center',
-                              fontsize=goal_font, fontweight='bold',
-                              color=RWARE_COLORS['text_primary'],
-                              zorder=3)
-            # Add text outline for better visibility
-            text.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
+            # Add 'G' label
+            center_x = x_pos + self.cell_size // 2
+            center_y = y_pos + self.cell_size // 2
+            goal_label = Label('G',
+                             font_size=16,
+                             color=(*RWARE_COLORS['text_primary'], 255),
+                             x=center_x, y=center_y,
+                             anchor_x='center', anchor_y='center')
+            self.labels.append(goal_label)
     
     def _draw_robots(self):
-        """Draw robots with enhanced transparency and responsive text."""
-        rows, cols = self.warehouse.grid_size
-        
-        # Calculate responsive font size for robot IDs
-        robot_font_scale = min(cols, rows) * self.fig_scale * 0.12
-        robot_font = max(8, min(16, robot_font_scale * 1.6))
+        """Draw robots with mode colors."""
+        mode_colors = {
+            0: hex_to_rgb('#32CD32'),  # Lime Green - IDLE
+            1: hex_to_rgb('#4169E1'),  # Royal Blue - Going to shelf
+            2: hex_to_rgb('#FF8C00'),  # Dark Orange - Going to station
+            3: hex_to_rgb('#DC143C')   # Crimson - Returning shelf
+        }
         
         for robot in self.warehouse.robots:
             x, y = robot.current_location
             
-            # Bounds check - make sure robot is within grid
-            if not (0 <= x < cols and 0 <= y < rows):
+            # Bounds check
+            if not (0 <= x < self.cols and 0 <= y < self.rows):
                 continue
             
-            # Enhanced color scheme with better contrast
-            mode_colors = {
-                0: '#32CD32',  # Lime Green - IDLE (more vibrant)
-                1: '#4169E1',  # Royal Blue - Going to shelf
-                2: '#FF8C00',  # Dark Orange - Going to station
-                3: '#DC143C'   # Crimson - Returning shelf
-            }
             color = mode_colors.get(robot.mode, RWARE_COLORS['robot_idle'])
             
-            # Draw robot with improved transparency and styling
-            circle = Circle(
-                (x, y), 0.3,  # Slightly larger for better visibility
-                facecolor=color,
-                edgecolor='#2F2F2F',  # Darker edge for better definition
-                linewidth=2.5,
-                alpha=0.75,  # More transparent
-                zorder=4
-            )
-            self.ax.add_patch(circle)
+            # Calculate position
+            center_x = x * self.cell_size + 50 + self.cell_size // 2
+            center_y = (self.rows - 1 - y) * self.cell_size + 50 + self.cell_size // 2  # Flip Y
+            radius = self.cell_size // 3
             
-            # Add subtle glow effect for active robots
+            # Draw robot circle
+            self._draw_circle(center_x, center_y, radius, rgb_to_gl(color), alpha=0.75)
+            
+            # Add glow effect for active robots
             if robot.mode != 0:  # Not idle
-                glow_circle = Circle(
-                    (x, y), 0.4,
-                    facecolor=color,
-                    edgecolor='none',
-                    alpha=0.2,
-                    zorder=3
-                )
-                self.ax.add_patch(glow_circle)
+                self._draw_circle(center_x, center_y, radius + 5, rgb_to_gl(color), alpha=0.2)
             
-            # Enhanced robot ID with better contrast and responsive font
-            text = self.ax.text(x, y, str(robot.robot_id),
-                               ha='center', va='center', 
-                               fontsize=robot_font, fontweight='bold',
-                               color='white',
-                               zorder=5)
-            # Add text outline for better readability
-            text.set_path_effects([pe.withStroke(linewidth=3, foreground='black')])
+            # Robot ID label
+            robot_label = Label(str(robot.robot_id),
+                              font_size=10,
+                              color=(255, 255, 255, 255),
+                              x=center_x, y=center_y,
+                              anchor_x='center', anchor_y='center')
+            self.labels.append(robot_label)
             
-            # Add direction indicator if robot is moving
+            # Direction indicator
             if robot.target_location != robot.current_location:
                 target_x, target_y = robot.target_location
                 dx = target_x - x
                 dy = target_y - y
                 
-                # Normalize direction
                 if dx != 0 or dy != 0:
                     length = (dx**2 + dy**2)**0.5
-                    dx_norm = dx / length * 0.15
-                    dy_norm = dy / length * 0.15
+                    dx_norm = dx / length * 10  # Arrow length
+                    dy_norm = dy / length * 10
                     
-                    # Draw arrow
-                    self.ax.arrow(x + dx_norm*0.5, y + dy_norm*0.5, 
-                                 dx_norm, dy_norm,
-                                 head_width=0.08, head_length=0.08,
-                                 fc='white', ec='black', linewidth=1.5,
-                                 alpha=0.9, zorder=6)
+                    arrow_end_x = center_x + dx_norm
+                    arrow_end_y = center_y - dy_norm  # Flip Y for arrow
+                    
+                    self._draw_line(center_x, center_y, arrow_end_x, arrow_end_y, 
+                                  rgb_to_gl((255, 255, 255)), line_width=2, alpha=0.9)
     
     def _draw_info_panel(self):
-        """Draw simple ASCII-only information panel with responsive font sizes."""
-        rows, cols = self.warehouse.grid_size
+        """Draw information panel at bottom."""
+        panel_y = 10
+        panel_height = 30
+        panel_width = self.width - 20
         
-        # Calculate responsive font sizes based on grid size and figure scale
-        base_font_scale = min(cols, rows) * self.fig_scale * 0.15
-        title_font = max(8, min(16, base_font_scale * 1.8))
-        text_font = max(7, min(12, base_font_scale * 1.4))
-        small_font = max(6, min(10, base_font_scale * 1.2))
-        tiny_font = max(5, min(9, base_font_scale * 1.0))
+        # Draw background panel
+        self._draw_rect(10, panel_y, panel_width, panel_height, 
+                       rgb_to_gl(RWARE_COLORS['info_panel']), alpha=0.9)
         
         # Calculate metrics
         avg_delay = self.warehouse.average_delay()
@@ -434,97 +315,152 @@ class RWareStyleRenderer:
         total_robots = len(self.warehouse.robots)
         efficiency = (busy_robots/total_robots*100) if total_robots > 0 else 0
         
-        # Simple background panel
-        panel = Rectangle(
-            (-0.5, -2.0), cols, 1.5,
-            facecolor='#F5F5F5',
-            edgecolor='#CCCCCC',
-            linewidth=1,
-            alpha=0.9,
-            zorder=10
-        )
-        self.ax.add_patch(panel)
+        # Main info text
+        info_text = f"Step: {self.warehouse.time} | Stock: {stock} | Orders: {pending}P/{completed}C | Efficiency: {efficiency:.0f}% | Avg Delay: {avg_delay:.1f}s"
         
-        # Title
-        self.ax.text(cols/2, -0.7, "WAREHOUSE OPERATIONS DASHBOARD",
-                    ha='center', va='center',
-                    fontsize=title_font, fontweight='bold',
-                    color='#000000',
-                    zorder=11)
-        
-        # Step counter
-        self.ax.text(cols - 0.2, -0.7, f"Step: {self.warehouse.time}",
-                    ha='right', va='center',
-                    fontsize=small_font,
-                    color='#000000',
-                    zorder=11)
-        
-        # Metrics row
-        metrics_line = f"Stock: {stock}    Orders: {pending}P/{completed}C    Efficiency: {efficiency:.0f}%    Avg Delay: {avg_delay:.1f}s"
-        self.ax.text(cols/2, -1.0, metrics_line,
-                    ha='center', va='center',
-                    fontsize=text_font,
-                    color='#000000',
-                    zorder=11)
-        
-        # Robot status
-        mode_names = {0: "IDLE", 1: "TO_SHELF", 2: "TO_STATION", 3: "RETURNING"}
-        robot_groups = {mode: [] for mode in range(4)}
-        for robot in self.warehouse.robots:
-            robot_groups[robot.mode].append(robot)
-        
-        # Robot status line
-        status_parts = []
-        for mode in [0, 1, 2, 3]:
-            count = len(robot_groups[mode])
-            if count > 0:
-                robot_ids = [str(r.robot_id) for r in robot_groups[mode][:8]]
-                id_str = ",".join(robot_ids)
-                if len(robot_groups[mode]) > 8:
-                    id_str += "..."
-                status_parts.append(f"{mode_names[mode]}({count}): {id_str}")
-            else:
-                status_parts.append(f"{mode_names[mode]}(0)")
-        
-        robot_line = "  |  ".join(status_parts)
-        self.ax.text(cols/2, -1.3, robot_line,
-                    ha='center', va='center',
-                    fontsize=small_font,
-                    color='#000000',
-                    zorder=11)
-        
-        # Performance status
-        if avg_delay < 5:
-            perf_status = "PERFORMANCE: EXCELLENT"
-        elif avg_delay < 10:
-            perf_status = "PERFORMANCE: GOOD"
-        elif avg_delay < 20:
-            perf_status = "PERFORMANCE: MODERATE"
-        else:
-            perf_status = "PERFORMANCE: POOR"
-        
-        self.ax.text(cols/2, -1.6, perf_status,
-                    ha='center', va='center',
-                    fontsize=small_font,
-                    color='#000000',
-                    zorder=11)
+        info_label = Label(info_text,
+                         font_size=10,
+                         color=(*RWARE_COLORS['text_secondary'], 255),
+                         x=self.width // 2, y=panel_y + panel_height // 2,
+                         anchor_x='center', anchor_y='center')
+        self.labels.append(info_label)
         
         # Timestamp
-        import datetime
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        self.ax.text(cols - 0.2, -1.9, f"Time: {timestamp}",
-                    ha='right', va='center',
-                    fontsize=tiny_font,
-                    color='#666666',
-                    zorder=11)
+        time_label = Label(f"Time: {timestamp}",
+                         font_size=8,
+                         color=(128, 128, 128, 255),
+                         x=self.width - 10, y=panel_y + 5,
+                         anchor_x='right', anchor_y='bottom')
+        self.labels.append(time_label)
+    
+    def _is_shelf_position(self, x: int, y: int) -> bool:
+        """Check if position should have a shelf."""
+        return not self.warehouse._is_highway(x, y)
+    
+    def _draw_rect(self, x: float, y: float, width: float, height: float, 
+                   color: Tuple[float, float, float], alpha: float = 1.0):
+        """Draw a rectangle using pyglet shapes."""
+        # Convert normalized color to 0-255 range
+        color_255 = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))
+        alpha_255 = int(alpha * 255)
+        
+        rect = Rectangle(x, y, width, height, color=(*color_255, alpha_255))
+        self.shapes.append(rect)
+    
+    def _draw_rect_border(self, x: float, y: float, width: float, height: float,
+                         color: Tuple[float, float, float], line_width: float = 1.0):
+        """Draw rectangle border using lines."""
+        # Convert normalized color to 0-255 range
+        color_255 = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))
+        
+        # Create four lines for the border (pyglet Line doesn't support width parameter)
+        lines = [
+            Line(x, y, x + width, y, color=color_255),  # bottom
+            Line(x + width, y, x + width, y + height, color=color_255),  # right
+            Line(x + width, y + height, x, y + height, color=color_255),  # top
+            Line(x, y + height, x, y, color=color_255),  # left
+        ]
+        self.shapes.extend(lines)
+    
+    def _draw_line(self, x1: float, y1: float, x2: float, y2: float,
+                   color: Tuple[float, float, float], line_width: float = 1.0, alpha: float = 1.0):
+        """Draw a line."""
+        # Convert normalized color to 0-255 range
+        color_255 = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255))
+        
+        line = Line(x1, y1, x2, y2, color=color_255)
+        self.shapes.append(line)
+    
+    def _draw_circle(self, center_x: float, center_y: float, radius: float,
+                     color: Tuple[float, float, float], alpha: float = 1.0, segments: int = 20):
+        """Draw a circle using pyglet shapes."""
+        # Convert normalized color to 0-255 range
+        color_255 = (int(color[0] * 255), int(color[1] * 255), int(color[2] * 255), int(alpha * 255))
+        
+        circle = Circle(center_x, center_y, radius, color=color_255[:3])
+        self.shapes.append(circle)
+
+
+class RWareStyleRenderer:
+    """Pyglet-based renderer that closely mimics RWare's visual style."""
+    
+    def __init__(self, warehouse: 'Warehouse', cell_size: int = 40, window_visible: bool = True):
+        """
+        Initialize the RWare-style renderer.
+        
+        Args:
+            warehouse: Warehouse instance to render
+            cell_size: Size of each grid cell in pixels
+            window_visible: Whether to show the window
+        """
+        self.warehouse = warehouse
+        self.cell_size = cell_size
+        self.window_visible = window_visible
+        self.window = None
+        
+        if window_visible:
+            self._setup_window()
+    
+    def _setup_window(self):
+        """Setup pyglet window."""
+        if self.window is None:
+            self.window = PygletWindow(
+                self.warehouse, 
+                cell_size=self.cell_size,
+                caption="Warehouse Simulation - RWare Style",
+                resizable=False,
+                visible=self.window_visible
+            )
+    
+    def render(self, mode: str = "human", pause_time: float = 0.05) -> Optional[np.ndarray]:
+        """
+        Render warehouse with pyglet.
+        
+        Args:
+            mode: 'human' for display, 'rgb_array' for array output
+            pause_time: Pause duration between frames
+            
+        Returns:
+            RGB array if mode='rgb_array', None otherwise
+        """
+        if mode == "human":
+            if not self.window_visible:
+                self._setup_window()
+            
+            if self.window is None:
+                return None
+                
+            # Draw and display
+            self.window.switch_to()
+            self.window.dispatch_events()
+            self.window.on_draw()
+            self.window.flip()
+            
+            # Simple pause implementation
+            import time
+            time.sleep(pause_time)
+            
+            return None
+            
+        elif mode == "rgb_array":
+            # For rgb_array mode, we need to render to a buffer
+            # This is more complex in pyglet and would require FBO setup
+            # For now, return a placeholder
+            rows, cols = self.warehouse.grid_size
+            return np.zeros((rows * self.cell_size + 200, cols * self.cell_size + 100, 3), dtype=np.uint8)
+        
+        return None
     
     def close(self):
         """Close the renderer."""
-        if self.fig is not None:
-            plt.close(self.fig)
-            self.fig = None
-            self.ax = None
+        if self.window is not None:
+            self.window.close()
+            self.window = None
 
+
+# Global renderer cache to avoid creating multiple instances
+_renderer_cache = {}
 
 # Convenience function
 def render_warehouse(warehouse: 'Warehouse', mode: str = "human", pause_time: float = 0.05) -> Optional[np.ndarray]:
@@ -539,10 +475,11 @@ def render_warehouse(warehouse: 'Warehouse', mode: str = "human", pause_time: fl
     Returns:
         RGB array if mode='rgb_array', None otherwise
     """
-    if not hasattr(warehouse, '_rware_renderer'):
-        warehouse._rware_renderer = RWareStyleRenderer(warehouse)
+    warehouse_id = id(warehouse)
+    if warehouse_id not in _renderer_cache:
+        _renderer_cache[warehouse_id] = RWareStyleRenderer(warehouse)
     
-    return warehouse._rware_renderer.render(mode, pause_time)
+    return _renderer_cache[warehouse_id].render(mode, pause_time)
 
 def debug_render_warehouse(warehouse: 'Warehouse') -> None:
     """

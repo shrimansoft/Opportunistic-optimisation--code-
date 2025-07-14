@@ -192,7 +192,7 @@ def main():
                     
                     # Try visual render (might hang in some environments)
                     try:
-                        env.render(pause_time=0.005)  # Much faster pause
+                        env.render(pause_time=0.05)  # Much faster pause
                     except Exception as e:
                         print(f"Visual render skipped: {e}")
                     
