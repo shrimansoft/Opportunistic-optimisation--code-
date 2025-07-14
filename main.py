@@ -106,19 +106,33 @@ class WarehouseEnv(gym.Env):
         # Use the new RWare-style visual renderer
         render_warehouse(self.warehouse, mode=mode, pause_time=0.5)
         
-        # Also print concise metrics to console for debugging
+        # Enhanced console metrics with robot assignments
         avg_delay = self.warehouse.average_delay()
         completed_orders = len(self.warehouse.order_compleated)
         pending_orders = len(self.warehouse.order_buffer)
         total_stock = self.warehouse.stock.sum()
 
-        # Robot utilization
+        # Robot utilization and detailed status
         busy_robots = len([r for r in self.warehouse.robots if not r.available])
         robot_utilization = (busy_robots / len(self.warehouse.robots)) * 100
 
         print(f"Step {self.current_step}: Stock={int(total_stock)} | Pending={pending_orders} | "
               f"Completed={completed_orders} | Avg Delay={avg_delay:.2f} | "
               f"Robot Util={robot_utilization:.1f}%")
+        
+        # Show robot assignments and modes
+        mode_names = {0: "IDLE", 1: "→SHELF", 2: "→STATION", 3: "→RETURN"}
+        print("Robot Status:")
+        for robot in self.warehouse.robots:
+            mode_name = mode_names.get(robot.mode, "UNKNOWN")
+            shelf_info = f"Shelf{robot.shelf}" if robot.shelf is not None else "No Assignment"
+            location_info = f"@({robot.current_location[0]},{robot.current_location[1]})"
+            target_info = f"→({robot.target_location[0]},{robot.target_location[1]})" if robot.target_location != robot.current_location else "@ Target"
+            time_left = f"T:{robot.time_left}" if robot.time_left > 0 else "Ready"
+            print(f"  R{robot.robot_id}: {mode_name:<10} | {shelf_info:<12} | {location_info} {target_info} | {time_left}")
+        
+        print("Robot Color Legend: Green=IDLE | Blue=→SHELF | Orange=→STATION | Red=→RETURN")
+        print("-" * 80)
 
 
 def main():
@@ -161,18 +175,32 @@ def main():
         total_reward = 0
         
         # Run shorter simulation for demo
-        for step in range(200):
+        for step in range(50):  # Reduced steps for clearer demo
             # Environment step (this handles all warehouse operations internally)
             action = env.action_space.sample()
             next_obs, reward, terminated, truncated, info = env.step(action)
             total_reward += reward
             
-            # Render every step
-            try:
-                print(f"Step {step}: Robot positions: {[(r.robot_id, r.current_location, r.target_location) for r in warehouse.robots]}")
-                env.render()
-            except Exception as e:
-                print(f"Rendering issue: {e}")
+            # Render every 10 steps to see progression clearly
+            if step % 10 == 0:
+                try:
+                    print(f"\n--- Step {step} ---")
+                    
+                    # Use debug renderer for clear console output
+                    from warehouse_sim.renderer import debug_render_warehouse
+                    debug_render_warehouse(warehouse)
+                    
+                    # Try visual render (might hang in some environments)
+                    try:
+                        env.render()
+                    except Exception as e:
+                        print(f"Visual render skipped: {e}")
+                    
+                except Exception as e:
+                    print(f"Rendering issue: {e}")
+            
+            if terminated or truncated:
+                break
             
             if terminated or truncated:
                 break

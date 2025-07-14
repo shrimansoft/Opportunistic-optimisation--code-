@@ -170,55 +170,87 @@ class RWareStyleRenderer:
                     self.ax.add_patch(rect)
     
     def _draw_shelves(self):
-        """Draw shelves with RWare styling."""
+        """Draw shelves with RWare styling and robot assignments."""
         rows, cols = self.warehouse.grid_size
         
+        # Create a mapping of shelf to assigned robot
+        shelf_to_robot = {}
+        for robot in self.warehouse.robots:
+            if robot.shelf is not None:
+                shelf_to_robot[robot.shelf] = robot.robot_id
+        
         for shelf_idx, shelf_items in enumerate(self.warehouse.shelfs):
-            if len(shelf_items) > 0:  # Only draw shelves with items
-                # Convert flat index to grid coordinates
-                # The shelfs array is indexed by flat coordinates (row-major order)
-                y = shelf_idx // cols  # Row (y-coordinate)
-                x = shelf_idx % cols   # Column (x-coordinate)
+            # Convert flat index to grid coordinates
+            # The shelfs array is indexed by flat coordinates (row-major order)
+            y = shelf_idx // cols  # Row (y-coordinate)
+            x = shelf_idx % cols   # Column (x-coordinate)
+            
+            # Skip highways and out-of-bounds positions
+            if x >= cols or y >= rows or self.warehouse._is_highway(x, y):
+                continue
+            
+            # Only draw shelves that are supposed to be shelf locations
+            # Check if this position should have a shelf based on warehouse layout
+            if not self._is_shelf_position(x, y):
+                continue
                 
-                # Skip highways and out-of-bounds positions
-                if x >= cols or y >= rows or self.warehouse._is_highway(x, y):
-                    continue
-                
-                # Choose color based on request status
-                is_requested = shelf_idx in self.warehouse.itemShelfsBufferSet
-                color = RWARE_COLORS['shelf_requested'] if is_requested else RWARE_COLORS['shelf']
-                
-                # Draw shelf with padding (RWare style)
-                padding = 0.1
-                rect = Rectangle(
-                    (x - 0.5 + padding, y - 0.5 + padding), 
-                    1 - 2*padding, 1 - 2*padding,
-                    facecolor=color,
-                    edgecolor=RWARE_COLORS['grid_lines'],
-                    linewidth=1,
-                    alpha=0.9,
-                    zorder=2
-                )
-                self.ax.add_patch(rect)
-                
-                # Add shelf information: ID and item count
-                # Top number = shelf_idx (unique shelf identifier: 0-399 for 20x20 grid)
-                # Bottom number = number of items currently stored in this shelf
-                num_items = len(shelf_items)
-                
-                # Display shelf ID (top half) and item count (bottom half)
-                self.ax.text(x, y - 0.15, str(shelf_idx), 
+            num_items = len(shelf_items)
+            
+            # Choose color based on request status and content
+            is_requested = shelf_idx in self.warehouse.itemShelfsBufferSet
+            has_items = num_items > 0
+            
+            if is_requested:
+                color = RWARE_COLORS['shelf_requested']  # Teal for requested shelves
+            elif has_items:
+                color = RWARE_COLORS['shelf']  # Dark blue for shelves with items
+            else:
+                color = '#A0A0A0'  # Light gray for empty shelves
+            
+            # Draw shelf with padding (RWare style)
+            padding = 0.1
+            rect = Rectangle(
+                (x - 0.5 + padding, y - 0.5 + padding), 
+                1 - 2*padding, 1 - 2*padding,
+                facecolor=color,
+                edgecolor=RWARE_COLORS['grid_lines'],
+                linewidth=1,
+                alpha=0.9,
+                zorder=2
+            )
+            self.ax.add_patch(rect)
+            
+            # Add shelf information: ID and item count
+            # Top number = shelf_idx (unique shelf identifier)
+            # Bottom number = number of items currently stored in this shelf
+            self.ax.text(x, y - 0.2, str(shelf_idx), 
+                       ha='center', va='center',
+                       fontsize=6, fontweight='bold',
+                       color=RWARE_COLORS['text_primary'],
+                       zorder=3)
+            
+            # Display item count
+            self.ax.text(x, y, f"({num_items})", 
+                       ha='center', va='center',
+                       fontsize=6, fontweight='normal',
+                       color=RWARE_COLORS['text_primary'],
+                       zorder=3)
+            
+            # Display assigned robot ID if any
+            if shelf_idx in shelf_to_robot:
+                robot_id = shelf_to_robot[shelf_idx]
+                self.ax.text(x, y + 0.2, f"R{robot_id}", 
                            ha='center', va='center',
-                           fontsize=6, fontweight='bold',
-                           color=RWARE_COLORS['text_primary'],
-                           zorder=3)
-                
-                # Display item count with different styling
-                self.ax.text(x, y + 0.15, f"({num_items})", 
-                           ha='center', va='center',
-                           fontsize=6, fontweight='normal',
-                           color=RWARE_COLORS['text_primary'],
-                           zorder=3)
+                           fontsize=7, fontweight='bold',
+                           color='yellow',  # Bright color for visibility
+                           zorder=3,
+                           bbox=dict(boxstyle="round,pad=0.1", facecolor='black', alpha=0.7))
+    
+    def _is_shelf_position(self, x: int, y: int) -> bool:
+        """Check if a position should have a shelf based on warehouse layout."""
+        # This is a simplified check - you might need to adjust based on your specific layout
+        # For now, assume non-highway positions can have shelves
+        return not self.warehouse._is_highway(x, y)
     
     def _draw_goals(self):
         """Draw picking stations as goals."""
@@ -246,7 +278,7 @@ class RWareStyleRenderer:
             text.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
     
     def _draw_robots(self):
-        """Draw robots with RWare styling."""
+        """Draw robots with RWare styling and mode-specific colors."""
         rows, cols = self.warehouse.grid_size
         
         for robot in self.warehouse.robots:
@@ -256,11 +288,15 @@ class RWareStyleRenderer:
             if not (0 <= x < cols and 0 <= y < rows):
                 continue
             
-            # Choose color based on state
-            if hasattr(robot, 'mode') and robot.mode != 0:
-                color = RWARE_COLORS['robot_busy']
-            else:
-                color = RWARE_COLORS['robot_idle']
+            # Choose color based on robot mode (like legacy plotter)
+            # Mode 0: IDLE (Green), Mode 1: ->SHELF (Blue), Mode 2: ->STATION (Orange), Mode 3: ->RETURN (Red)
+            mode_colors = {
+                0: '#00FF00',  # Green - IDLE
+                1: '#0000FF',  # Blue - Going to shelf
+                2: '#FFA500',  # Orange - Going to station
+                3: '#FF0000'   # Red - Returning shelf
+            }
+            color = mode_colors.get(robot.mode, RWARE_COLORS['robot_idle'])
             
             # Draw robot as circle (RWare style)
             circle = Circle(
@@ -308,7 +344,7 @@ class RWareStyleRenderer:
                              alpha=0.8, zorder=5, linewidth=1.5)
     
     def _draw_info_panel(self):
-        """Draw information panel at bottom with RWare styling."""
+        """Draw information panel at bottom with RWare styling and robot assignments."""
         rows, cols = self.warehouse.grid_size
         
         # Calculate metrics
@@ -333,19 +369,48 @@ class RWareStyleRenderer:
         
         # Title
         title = f"Warehouse Simulation - Step {self.warehouse.time}"
-        self.ax.text(cols/2, -0.8, title,
+        self.ax.text(cols/2, -0.75, title,
                     ha='center', va='center',
                     fontsize=12, fontweight='bold',
                     color=RWARE_COLORS['text_secondary'],
                     zorder=11)
         
-        # Metrics in RWare style
+        # Main metrics
         metrics = f"Stock: {stock} | Pending: {pending} | Completed: {completed} | Avg Delay: {avg_delay:.1f} | Robots: {busy_robots}/{total_robots}"
-        self.ax.text(cols/2, -1.2, metrics,
+        self.ax.text(cols/2, -0.95, metrics,
                     ha='center', va='center',
                     fontsize=10,
                     color=RWARE_COLORS['text_secondary'],
                     zorder=11)
+        
+        # Robot assignments and color legend
+        mode_names = {0: "IDLE", 1: "→SHELF", 2: "→STATION", 3: "→RETURN"}
+        mode_colors = {0: "Green", 1: "Blue", 2: "Orange", 3: "Red"}
+        
+        robot_info = []
+        for robot in self.warehouse.robots:
+            mode_name = mode_names.get(robot.mode, "UNKNOWN")
+            shelf_info = f"Shelf{robot.shelf}" if robot.shelf is not None else "No Shelf"
+            robot_info.append(f"R{robot.robot_id}:{mode_name}({shelf_info})")
+        
+        # Robot assignments text (split into lines if too long)
+        robot_text = " | ".join(robot_info)
+        if len(robot_text) > 80:  # Split long text
+            mid = len(robot_info) // 2
+            line1 = " | ".join(robot_info[:mid])
+            line2 = " | ".join(robot_info[mid:])
+            self.ax.text(cols/2, -1.15, line1, ha='center', va='center', fontsize=8, 
+                        color=RWARE_COLORS['text_secondary'], zorder=11)
+            self.ax.text(cols/2, -1.25, line2, ha='center', va='center', fontsize=8,
+                        color=RWARE_COLORS['text_secondary'], zorder=11)
+        else:
+            self.ax.text(cols/2, -1.15, robot_text, ha='center', va='center', fontsize=8,
+                        color=RWARE_COLORS['text_secondary'], zorder=11)
+        
+        # Color legend
+        legend_text = "Robot Colors: Green=IDLE | Blue=→SHELF | Orange=→STATION | Red=→RETURN"
+        self.ax.text(cols/2, -1.35, legend_text, ha='center', va='center', fontsize=8,
+                    color=RWARE_COLORS['text_secondary'], style='italic', zorder=11)
     
     def close(self):
         """Close the renderer."""
@@ -372,3 +437,42 @@ def render_warehouse(warehouse: 'Warehouse', mode: str = "human", pause_time: fl
         warehouse._rware_renderer = RWareStyleRenderer(warehouse)
     
     return warehouse._rware_renderer.render(mode, pause_time)
+
+def debug_render_warehouse(warehouse: 'Warehouse') -> None:
+    """
+    Simple text-based debug renderer that shows robot assignments and shelf status.
+    """
+    print("=== WAREHOUSE DEBUG RENDER ===")
+    print(f"Grid size: {warehouse.grid_size}")
+    print(f"Time: {warehouse.time}")
+    
+    # Create a mapping of shelf to assigned robot
+    shelf_to_robot = {}
+    for robot in warehouse.robots:
+        if robot.shelf is not None:
+            shelf_to_robot[robot.shelf] = robot.robot_id
+    
+    print("\nRobot Status:")
+    mode_names = {0: "IDLE", 1: "→SHELF", 2: "→STATION", 3: "→RETURN"}
+    for robot in warehouse.robots:
+        mode_name = mode_names.get(robot.mode, "UNKNOWN")
+        shelf_info = f"Shelf{robot.shelf}" if robot.shelf is not None else "No Assignment"
+        location_info = f"@({robot.current_location[0]},{robot.current_location[1]})"
+        target_info = f"→({robot.target_location[0]},{robot.target_location[1]})" if robot.target_location != robot.current_location else "@ Target"
+        time_left = f"T:{robot.time_left}" if robot.time_left > 0 else "Ready"
+        print(f"  R{robot.robot_id}: {mode_name:<10} | {shelf_info:<12} | {location_info} {target_info} | {time_left}")
+    
+    print(f"\nRequested Shelves: {warehouse.itemShelfsBufferSet}")
+    print(f"Orders in buffer: {len(warehouse.order_buffer)}")
+    print(f"Completed orders: {len(warehouse.order_compleated)}")
+    
+    # Show shelves with robot assignments
+    print("\nShelf Assignments:")
+    for shelf_idx, robot_id in shelf_to_robot.items():
+        rows, cols = warehouse.grid_size
+        y = shelf_idx // cols
+        x = shelf_idx % cols
+        items = len(warehouse.shelfs[shelf_idx])
+        print(f"  Shelf {shelf_idx} @({x},{y}): R{robot_id} assigned, {items} items")
+    
+    print("=" * 40)
