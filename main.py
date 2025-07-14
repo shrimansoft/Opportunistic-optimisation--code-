@@ -97,14 +97,14 @@ class WarehouseEnv(gym.Env):
         )  # Completed orders count as reward
         return reward
 
-    def render(self, mode="human"):
+    def render(self, mode="human", pause_time=0.05):
         """
         Render the current state of the environment for visualization (RWare-style)
         """
         from warehouse_sim.renderer import render_warehouse
         
-        # Use the new RWare-style visual renderer
-        render_warehouse(self.warehouse, mode=mode, pause_time=0.5)
+        # Use the new RWare-style visual renderer with faster pause
+        render_warehouse(self.warehouse, mode=mode, pause_time=pause_time)
         
         # Enhanced console metrics with robot assignments
         avg_delay = self.warehouse.average_delay()
@@ -147,7 +147,7 @@ def main():
 
     # Test different RWare layout sizes
     # layout_sizes = ["tiny", "small", "medium", "large"]
-    layout_sizes = ["tiny"]
+    layout_sizes = ["medium"]
     
     for i, layout_size in enumerate(layout_sizes):
         print(f"\n=== Demo {i+1}/4: {layout_size.upper()} warehouse layout ===")
@@ -175,14 +175,14 @@ def main():
         total_reward = 0
         
         # Run shorter simulation for demo
-        for step in range(50):  # Reduced steps for clearer demo
+        for step in range(500):  # Reduced steps for clearer demo
             # Environment step (this handles all warehouse operations internally)
             action = env.action_space.sample()
             next_obs, reward, terminated, truncated, info = env.step(action)
             total_reward += reward
             
             # Render every 10 steps to see progression clearly
-            if step % 10 == 0:
+            if step % 1 == 0:
                 try:
                     print(f"\n--- Step {step} ---")
                     
@@ -192,7 +192,7 @@ def main():
                     
                     # Try visual render (might hang in some environments)
                     try:
-                        env.render()
+                        env.render(pause_time=0.005)  # Much faster pause
                     except Exception as e:
                         print(f"Visual render skipped: {e}")
                     
@@ -210,7 +210,7 @@ def main():
         # Final visualization
         try:
             print(f"Final state visualization for {layout_size} layout...")
-            env.render()
+            env.render(pause_time=0.1)  # Faster final render
         except Exception as e:
             print(f"Final rendering error: {e}")
     

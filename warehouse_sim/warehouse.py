@@ -173,13 +173,18 @@ class Warehouse:
         
         num_shelf_positions = len(shelf_positions)
         
-        # Adjust item types and quantities based on warehouse size
-        if num_shelf_positions < 50:
-            self.n_item_types = max(10, num_shelf_positions // 4)
-            items_per_type = max(6, 300 // self.n_item_types)
-        else:
-            self.n_item_types = 50
-            items_per_type = 48
+        # Calculate item types to perfectly match shelf capacity
+        # Formula: (item_types × 12 items_per_type) = (shelves × 6 items_per_shelf)
+        # Therefore: item_types = (shelves × 6) ÷ 12 = shelves ÷ 2
+        items_per_type = 12
+        items_per_shelf = 6
+        total_shelf_capacity = num_shelf_positions * items_per_shelf
+        
+        self.n_item_types = total_shelf_capacity // items_per_type
+        
+        # Ensure we have at least 1 item type
+        if self.n_item_types < 1:
+            self.n_item_types = 1
         
         # Setup probabilistic distribution for items
         self.probabilities = np.random.dirichlet(np.ones(self.n_item_types), size=1)[0]
@@ -198,18 +203,27 @@ class Warehouse:
                 self.distance[i] = base_distance
         
         # Initialize stock and shelves
-        self.stock = np.ones(self.n_item_types) * items_per_type
+        # IMPORTANT: Stock must match what's actually placed on shelves
+        items_per_shelf = 6
+        total_items_needed = num_shelf_positions * items_per_shelf
+        
+        # Create items array based on actual shelf capacity
         items = np.repeat(np.arange(0, self.n_item_types), items_per_type)
         np.random.shuffle(items)
         
-        # Distribute items to shelf positions only
-        items_per_shelf = 6
-        total_items_needed = num_shelf_positions * items_per_shelf
         if len(items) < total_items_needed:
             # Repeat items if we don't have enough
             items = np.tile(items, (total_items_needed // len(items)) + 1)[:total_items_needed]
         
-        shelfs_array = items[:total_items_needed].reshape(num_shelf_positions, items_per_shelf)
+        # Use only the items we can actually place
+        items_to_place = items[:total_items_needed]
+        
+        # Initialize stock based on what's actually being placed
+        self.stock = np.zeros(self.n_item_types)
+        for item_type in items_to_place:
+            self.stock[item_type] += 1
+        
+        shelfs_array = items_to_place.reshape(num_shelf_positions, items_per_shelf)
         self.shelfs = [[] for _ in range(self.grid_size[0] * self.grid_size[1])]
         
         # Place items only in valid shelf positions
@@ -298,14 +312,6 @@ class Warehouse:
         """Reset the warehouse to initial state for a new simulation."""
         self.time = 0
 
-        # Reset stock to initial state
-        items_per_type = int(self.stock.sum() / self.n_item_types) if self.n_item_types > 0 else 48
-        self.stock = np.ones(self.n_item_types) * items_per_type
-
-        # Reinitialize shelf layout
-        items = np.repeat(np.arange(0, self.n_item_types), items_per_type)
-        np.random.shuffle(items)
-        
         # Get valid shelf positions
         shelf_positions = []
         for y in range(self.grid_size[0]):
@@ -313,17 +319,39 @@ class Warehouse:
                 if not self._is_highway(x, y):
                     shelf_positions.append(y * self.grid_size[1] + x)
         
-        # Redistribute items to shelves
+        # Calculate items based on actual shelf capacity
         items_per_shelf = 6
+        items_per_type = 12
         total_items_needed = len(shelf_positions) * items_per_shelf
-        if len(items) < total_items_needed:
-            items = np.tile(items, (total_items_needed // len(items)) + 1)[:total_items_needed]
+        
+        # Create items array - should perfectly match with our formula
+        # (n_item_types × 12) should equal (shelf_positions × 6)
+        items = np.repeat(np.arange(0, self.n_item_types), items_per_type)
+        
+        # Verify the math matches (should be exact)
+        if len(items) != total_items_needed:
+            print(f"Warning: Item count mismatch! Generated {len(items)}, needed {total_items_needed}")
+            # If there's still a mismatch, adjust
+            if len(items) < total_items_needed:
+                extra_items_needed = total_items_needed - len(items)
+                extra_items = np.random.choice(self.n_item_types, extra_items_needed)
+                items = np.concatenate([items, extra_items])
+            else:
+                items = items[:total_items_needed]
+        
+        np.random.shuffle(items)
+        items_to_place = items[:total_items_needed]
+        
+        # Reset stock based on what's actually being placed
+        self.stock = np.zeros(self.n_item_types)
+        for item_type in items_to_place:
+            self.stock[item_type] += 1
         
         # Clear all shelves first
         self.shelfs = [[] for _ in range(self.grid_size[0] * self.grid_size[1])]
         
         # Redistribute items
-        shelfs_array = items[:total_items_needed].reshape(len(shelf_positions), items_per_shelf)
+        shelfs_array = items_to_place.reshape(len(shelf_positions), items_per_shelf)
         for i, shelf_pos in enumerate(shelf_positions):
             self.shelfs[shelf_pos] = shelfs_array[i].tolist()
 
