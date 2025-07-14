@@ -7,11 +7,14 @@ from .ploter import ploter
 matplotlib.use("TkAgg")  # its for intteractive plots.
 
 
-from typing import List
+from typing import List, Tuple
 
 from .order import OrderItem
 from .picking_station import PickingStation
 from .robot import Robot
+
+# RWare-compatible constants
+_COLLISION_LAYERS = 2
 
 
 class Warehouse:
@@ -21,6 +24,15 @@ class Warehouse:
 
         self.time = 0
         self.buffer_enabled = buffer_enabled
+
+        # Grid system setup (RWare-compatible)
+        self.grid_size = (20, 20)  # (height, width) for 20x20 layout
+        self.grid = np.zeros((_COLLISION_LAYERS, *self.grid_size), dtype=np.int32)
+        self.highways = np.zeros(self.grid_size, dtype=np.uint8)
+
+        # Initialize highway system for 20x20 grid
+        self._setup_highways()
+
         self.probabilities = np.random.dirichlet(np.ones(50), size=1)[
             0
         ]  # Assumption from past order distribution.
@@ -53,6 +65,43 @@ class Warehouse:
 
         self.fig = None
         self.interactive_mode = False
+
+    def _setup_highways(self):
+        """Setup highway/corridor system for 20x20 grid layout."""
+        # For now, create a simple highway pattern
+        # Vertical highways every 3 columns, horizontal highways every 4 rows
+        for x in range(self.grid_size[1]):
+            for y in range(self.grid_size[0]):
+                # Vertical highways
+                is_vertical_highway = x % 3 == 0
+                # Horizontal highways  
+                is_horizontal_highway = y % 4 == 0
+                # Bottom row for goals
+                is_goal_row = y == self.grid_size[0] - 1
+                
+                if is_vertical_highway or is_horizontal_highway or is_goal_row:
+                    self.highways[y, x] = 1
+
+    def _is_highway(self, x: int, y: int) -> bool:
+        """Check if given coordinates are on a highway."""
+        if not (0 <= x < self.grid_size[1] and 0 <= y < self.grid_size[0]):
+            return False
+        return bool(self.highways[y, x])
+
+    def _make_layout_from_params(self, shelf_columns: int, shelf_rows: int, column_height: int):
+        """Create RWare-style layout from parameters (placeholder for future use)."""
+        # This method will be used when we implement different layout sizes
+        # For now, keep the 20x20 grid
+        pass
+
+    def _recalc_grid(self):
+        """Recalculate collision grid based on current entity positions."""
+        # Clear the grid
+        self.grid[:] = 0
+        
+        # This will be populated when we migrate robots and shelves to entity system
+        # For now, this is a placeholder for the RWare-compatible grid recalculation
+        pass
 
     def buffer_update(self, shelf, picking_station: PickingStation):
         """
@@ -151,10 +200,22 @@ class Warehouse:
 
     def nearestShelf(self, n):
         availableInShelfs = list(map(bool, self.itemInShelfs(n)))
-        distance = [
-            0 if i in self.itemShelfsBufferSet else self.distance[i]
-            for i in range(len(self.distance))
-        ]
+        
+        # Updated distance calculation to consider highways
+        distance = []
+        for i in range(len(self.distance)):
+            if i in self.itemShelfsBufferSet:
+                distance.append(0)
+            else:
+                # Use original distance but could be enhanced with highway-aware pathfinding
+                base_distance = self.distance[i]
+                x, y = i % 20, i // 20
+                # Simple highway bonus - reduce distance if on highway
+                if self._is_highway(x, y):
+                    distance.append(max(1, base_distance * 0.8))  # 20% reduction for highway locations
+                else:
+                    distance.append(base_distance)
+        
         filteredList = [
             (i, v) for i, (v, l) in enumerate(zip(distance, availableInShelfs)) if l
         ]
@@ -251,7 +312,9 @@ class Warehouse:
             return delay / order_count
 
     def enhanced_plot(self, frame_dir=None, step_number=None, pause_time=0.1):
-        return ploter(self, frame_dir=None, step_number=None, pause_time=0.1)
+        """Enhanced plotting using the new RWare-style renderer."""
+        from .renderer import render_warehouse
+        return render_warehouse(self, mode="human", pause_time=pause_time)
 
     def set_buffer_enabled(self, enabled):
         """Enable or disable all picking station buffers."""

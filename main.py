@@ -27,7 +27,7 @@ class WarehouseEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=1, shape=(400,), dtype=np.int32)
 
         # The maximum number of steps per episode (time steps)
-        self.max_steps = 500
+        self.max_steps = 1000
         self.current_step = 0
 
     def reset(self, seed=None, options=None):
@@ -102,9 +102,14 @@ class WarehouseEnv(gym.Env):
 
     def render(self, mode="human"):
         """
-        Render the current state of the environment for visualization (useful for debugging)
+        Render the current state of the environment for visualization (RWare-style)
         """
-        # Print comprehensive metrics to console
+        from warehouse_sim.renderer import render_warehouse
+        
+        # Use the new RWare-style visual renderer
+        render_warehouse(self.warehouse, mode=mode, pause_time=0.5)
+        
+        # Also print concise metrics to console for debugging
         avg_delay = self.warehouse.average_delay()
         completed_orders = len(self.warehouse.order_compleated)
         pending_orders = len(self.warehouse.order_buffer)
@@ -114,50 +119,9 @@ class WarehouseEnv(gym.Env):
         busy_robots = len([r for r in self.warehouse.robots if not r.available])
         robot_utilization = (busy_robots / len(self.warehouse.robots)) * 100
 
-        # Buffer metrics
-        total_buffer_items = sum(
-            len(station.buffer) for station in self.warehouse.picking_stations
-        )
-        buffer_orders = len(
-            [order for order in self.warehouse.order_compleated if order.delay == 0]
-        )
-        buffer_hit_rate = (buffer_orders / max(completed_orders, 1)) * 100
-
-        print(f"\n{'='*60}")
-        print(f"STEP {self.current_step} - WAREHOUSE METRICS")
-        print(f"{'='*60}")
-        print(
-            f"📦 INVENTORY    : Stock={int(total_stock):4d} | Pending={pending_orders:3d} | Completed={completed_orders:3d}"
-        )
-        print(
-            f"⏱️  PERFORMANCE : Avg Delay={avg_delay:6.2f} | Buffer Hit Rate={buffer_hit_rate:5.1f}%"
-        )
-        print(
-            f"🤖 ROBOTS      : Utilization={robot_utilization:5.1f}% | Busy={busy_robots}/{len(self.warehouse.robots)}"
-        )
-        print(f"📊 BUFFERS     : Total Items={total_buffer_items:3d}")
-
-        # Show recent order delays
-        if completed_orders > 0:
-            recent_delays = [
-                order.delay for order in self.warehouse.order_compleated[-5:]
-            ]
-            print(f"🕒 RECENT DELAYS: {recent_delays}")
-
-        # Show buffer contents
-        for i, station in enumerate(self.warehouse.picking_stations):
-            if station.buffer_enabled:
-                buffer_items = station.buffer[:8]  # Show first 8 items
-                print(
-                    f"🗂️  BUFFER PS{i}: {len(station.buffer)}/{station.buffer_size} items {buffer_items}"
-                )
-            else:
-                print(f"🗂️  BUFFER PS{i}: DISABLED")
-
-        print(f"{'='*60}")
-
-        # Show the interactive plot instead of saving frames
-        self.warehouse.enhanced_plot(pause_time=0.5)  # Show plot with half-second pause
+        print(f"Step {self.current_step}: Stock={int(total_stock)} | Pending={pending_orders} | "
+              f"Completed={completed_orders} | Avg Delay={avg_delay:.2f} | "
+              f"Robot Util={robot_utilization:.1f}%")
 
 
 def main():
@@ -171,7 +135,7 @@ def main():
 
     env = WarehouseEnv(warehouse)  # Initialize the Gymnasium environment
 
-    for episode in range(1):
+    for episode in range(2):
         obs, info = env.reset(seed=SEED + episode)  # Different seed per episode
         terminated = False
         truncated = False
