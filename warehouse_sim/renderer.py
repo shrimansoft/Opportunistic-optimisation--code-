@@ -56,14 +56,14 @@ class RWareStyleRenderer:
         
         # Calculate optimized figure size for better visual quality
         fig_width = max(8, cols * self.fig_scale + 2)
-        fig_height = max(6, rows * self.fig_scale + 3.5)  # Extra space for enhanced info panel
+        fig_height = max(6, rows * self.fig_scale + 4.2)  # Extra space for two-row info panel
         
         # Create figure with high DPI for crisp rendering
         self.fig, self.ax = plt.subplots(figsize=(fig_width, fig_height), dpi=100)
         
         # Set grid bounds with optimized padding
         self.ax.set_xlim(-0.6, cols - 0.4)
-        self.ax.set_ylim(-1.8, rows - 0.4)  # Expanded space for enhanced info panel
+        self.ax.set_ylim(-2.5, rows - 0.4)  # Expanded space for two-row info panel
         self.ax.set_aspect('equal')
         
         # RWare uses inverted Y (0,0 at top-left)
@@ -102,7 +102,7 @@ class RWareStyleRenderer:
         self.ax.set_facecolor(RWARE_COLORS['background'])
         rows, cols = self.warehouse.grid_size
         self.ax.set_xlim(-0.6, cols - 0.4)
-        self.ax.set_ylim(-1.8, rows - 0.4)  # Expanded for enhanced info panel
+        self.ax.set_ylim(-2.5, rows - 0.4)  # Expanded for two-row info panel
         self.ax.set_aspect('equal')
         self.ax.invert_yaxis()
         self.ax.set_xticks([])
@@ -175,8 +175,14 @@ class RWareStyleRenderer:
                     self.ax.add_patch(rect)
     
     def _draw_shelves(self):
-        """Draw shelves with enhanced visual styling and better information display."""
+        """Draw shelves with enhanced visual styling and responsive text."""
         rows, cols = self.warehouse.grid_size
+        
+        # Calculate responsive font sizes for shelf labels
+        shelf_font_scale = min(cols, rows) * self.fig_scale * 0.12
+        shelf_id_font = max(5, min(8, shelf_font_scale * 0.8))
+        shelf_item_font = max(8, min(14, shelf_font_scale * 1.4))
+        shelf_robot_font = max(6, min(10, shelf_font_scale * 1.0))
         
         # Create a mapping of shelf to assigned robot
         shelf_to_robot = {}
@@ -248,7 +254,7 @@ class RWareStyleRenderer:
             # Shelf ID (top-left, smaller)
             self.ax.text(x - 0.3, y - 0.25, f"{shelf_idx}", 
                        ha='left', va='center',
-                       fontsize=7, fontweight='bold',
+                       fontsize=shelf_id_font, fontweight='bold',
                        color='white' if color != '#D3D3D3' else 'black',
                        zorder=3,
                        bbox=dict(boxstyle="round,pad=0.1", 
@@ -260,7 +266,7 @@ class RWareStyleRenderer:
             item_color = 'white' if color != '#D3D3D3' else 'black'
             self.ax.text(x, y, item_text, 
                        ha='center', va='center',
-                       fontsize=12 if num_items > 0 else 10, 
+                       fontsize=shelf_item_font if num_items > 0 else shelf_item_font * 0.8, 
                        fontweight='bold',
                        color=item_color,
                        zorder=3)
@@ -270,7 +276,7 @@ class RWareStyleRenderer:
                 robot_id = shelf_to_robot[shelf_idx]
                 robot_text = self.ax.text(x + 0.25, y + 0.25, f"R{robot_id}", 
                            ha='center', va='center',
-                           fontsize=8, fontweight='bold',
+                           fontsize=shelf_robot_font, fontweight='bold',
                            color='white',
                            zorder=4,
                            bbox=dict(boxstyle="round,pad=0.15", 
@@ -294,7 +300,7 @@ class RWareStyleRenderer:
                 self.ax.add_patch(priority_circle)
                 self.ax.text(x - 0.35, y - 0.35, "!", 
                            ha='center', va='center',
-                           fontsize=8, fontweight='bold',
+                           fontsize=shelf_robot_font, fontweight='bold',
                            color='white',
                            zorder=5)
     
@@ -305,7 +311,12 @@ class RWareStyleRenderer:
         return not self.warehouse._is_highway(x, y)
     
     def _draw_goals(self):
-        """Draw picking stations as goals."""
+        """Draw picking stations as goals with responsive text."""
+        # Calculate responsive font size for goal labels
+        rows, cols = self.warehouse.grid_size
+        goal_font_scale = min(cols, rows) * self.fig_scale * 0.15
+        goal_font = max(10, min(20, goal_font_scale * 2.0))
+        
         for station in self.warehouse.picking_stations:
             x, y = station.location
             
@@ -323,15 +334,19 @@ class RWareStyleRenderer:
             # Add 'G' label with enhanced styling
             text = self.ax.text(x, y, 'G', 
                               ha='center', va='center',
-                              fontsize=16, fontweight='bold',
+                              fontsize=goal_font, fontweight='bold',
                               color=RWARE_COLORS['text_primary'],
                               zorder=3)
             # Add text outline for better visibility
             text.set_path_effects([pe.withStroke(linewidth=2, foreground='black')])
     
     def _draw_robots(self):
-        """Draw robots with enhanced transparency and visual indicators."""
+        """Draw robots with enhanced transparency and responsive text."""
         rows, cols = self.warehouse.grid_size
+        
+        # Calculate responsive font size for robot IDs
+        robot_font_scale = min(cols, rows) * self.fig_scale * 0.12
+        robot_font = max(8, min(16, robot_font_scale * 1.6))
         
         for robot in self.warehouse.robots:
             x, y = robot.current_location
@@ -371,10 +386,10 @@ class RWareStyleRenderer:
                 )
                 self.ax.add_patch(glow_circle)
             
-            # Enhanced robot ID with better contrast
+            # Enhanced robot ID with better contrast and responsive font
             text = self.ax.text(x, y, str(robot.robot_id),
                                ha='center', va='center', 
-                               fontsize=14, fontweight='bold',
+                               fontsize=robot_font, fontweight='bold',
                                color='white',
                                zorder=5)
             # Add text outline for better readability
@@ -400,99 +415,108 @@ class RWareStyleRenderer:
                                  alpha=0.9, zorder=6)
     
     def _draw_info_panel(self):
-        """Draw enhanced information panel with structured layout and better typography."""
+        """Draw simple ASCII-only information panel with responsive font sizes."""
         rows, cols = self.warehouse.grid_size
         
-        # Calculate comprehensive metrics
+        # Calculate responsive font sizes based on grid size and figure scale
+        base_font_scale = min(cols, rows) * self.fig_scale * 0.15
+        title_font = max(8, min(16, base_font_scale * 1.8))
+        text_font = max(7, min(12, base_font_scale * 1.4))
+        small_font = max(6, min(10, base_font_scale * 1.2))
+        tiny_font = max(5, min(9, base_font_scale * 1.0))
+        
+        # Calculate metrics
         avg_delay = self.warehouse.average_delay()
         completed = len(self.warehouse.order_compleated)
         pending = len(self.warehouse.order_buffer)
         stock = int(self.warehouse.stock.sum())
         busy_robots = len([r for r in self.warehouse.robots if not r.available])
         total_robots = len(self.warehouse.robots)
+        efficiency = (busy_robots/total_robots*100) if total_robots > 0 else 0
         
-        # Create enhanced info panel background
-        panel = FancyBboxPatch(
-            (-0.45, -1.65), cols - 0.1, 1.1,
-            boxstyle="round,pad=0.15",
-            facecolor=RWARE_COLORS['info_panel'],
+        # Simple background panel
+        panel = Rectangle(
+            (-0.5, -2.0), cols, 1.5,
+            facecolor='#F5F5F5',
             edgecolor='#CCCCCC',
-            linewidth=1.5,
-            alpha=0.95,
+            linewidth=1,
+            alpha=0.9,
             zorder=10
         )
         self.ax.add_patch(panel)
         
-        # Enhanced title with step counter
-        title = f"🏭 Warehouse Operations Dashboard • Step {self.warehouse.time:,}"
-        title_text = self.ax.text(cols/2, -0.70, title,
-                                 ha='center', va='center',
-                                 fontsize=13, fontweight='bold',
-                                 color='#2C3E50',
-                                 zorder=11)
-        title_text.set_path_effects([pe.withStroke(linewidth=0.5, foreground='white')])
-        
-        # Structured metrics in organized sections
-        # Section 1: Inventory & Orders
-        inventory_metrics = f"📦 Stock: {stock:,} items  •  📋 Orders: {pending} pending, {completed} completed  •  ⏱️ Avg Delay: {avg_delay:.1f}s"
-        self.ax.text(cols/2, -0.90, inventory_metrics,
+        # Title
+        self.ax.text(cols/2, -0.7, "WAREHOUSE OPERATIONS DASHBOARD",
                     ha='center', va='center',
-                    fontsize=9, fontweight='normal',
-                    color='#34495E',
+                    fontsize=title_font, fontweight='bold',
+                    color='#000000',
                     zorder=11)
         
-        # Section 2: Robot Activity Summary
-        robot_activity = f"🤖 Robots: {busy_robots}/{total_robots} active  •  🚀 Efficiency: {(busy_robots/total_robots*100):.1f}%"
-        self.ax.text(cols/2, -1.05, robot_activity,
-                    ha='center', va='center',
-                    fontsize=9, fontweight='normal',
-                    color='#34495E',
+        # Step counter
+        self.ax.text(cols - 0.2, -0.7, f"Step: {self.warehouse.time}",
+                    ha='right', va='center',
+                    fontsize=small_font,
+                    color='#000000',
                     zorder=11)
         
-        # Section 3: Robot Status Details (improved structure)
-        mode_names = {0: "IDLE", 1: "→SHELF", 2: "→STATION", 3: "→RETURN"}
-        mode_emojis = {0: "🟢", 1: "🔵", 2: "🟠", 3: "🔴"}
+        # Metrics row
+        metrics_line = f"Stock: {stock}    Orders: {pending}P/{completed}C    Efficiency: {efficiency:.0f}%    Avg Delay: {avg_delay:.1f}s"
+        self.ax.text(cols/2, -1.0, metrics_line,
+                    ha='center', va='center',
+                    fontsize=text_font,
+                    color='#000000',
+                    zorder=11)
         
-        # Group robots by mode for better organization
+        # Robot status
+        mode_names = {0: "IDLE", 1: "TO_SHELF", 2: "TO_STATION", 3: "RETURNING"}
         robot_groups = {mode: [] for mode in range(4)}
         for robot in self.warehouse.robots:
             robot_groups[robot.mode].append(robot)
         
-        # Create structured robot status text
+        # Robot status line
         status_parts = []
-        for mode in [0, 1, 2, 3]:  # Order by priority
-            if robot_groups[mode]:
-                robot_ids = [str(r.robot_id) for r in robot_groups[mode]]
-                status_parts.append(f"{mode_emojis[mode]} {mode_names[mode]}: {', '.join(robot_ids)}")
-        
-        # Display robot status in up to 2 lines
-        if status_parts:
-            status_text = "  •  ".join(status_parts)
-            if len(status_text) > 90:  # Split if too long
-                # Find good split point
-                mid_point = len(status_text) // 2
-                split_idx = status_text.find("  •  ", mid_point)
-                if split_idx == -1:
-                    split_idx = mid_point
-                
-                line1 = status_text[:split_idx].strip()
-                line2 = status_text[split_idx:].strip().lstrip("• ")
-                
-                self.ax.text(cols/2, -1.25, line1, ha='center', va='center', fontsize=8.5, 
-                            color='#2C3E50', zorder=11)
-                self.ax.text(cols/2, -1.40, line2, ha='center', va='center', fontsize=8.5,
-                            color='#2C3E50', zorder=11)
+        for mode in [0, 1, 2, 3]:
+            count = len(robot_groups[mode])
+            if count > 0:
+                robot_ids = [str(r.robot_id) for r in robot_groups[mode][:8]]
+                id_str = ",".join(robot_ids)
+                if len(robot_groups[mode]) > 8:
+                    id_str += "..."
+                status_parts.append(f"{mode_names[mode]}({count}): {id_str}")
             else:
-                self.ax.text(cols/2, -1.25, status_text, ha='center', va='center', fontsize=8.5,
-                            color='#2C3E50', zorder=11)
+                status_parts.append(f"{mode_names[mode]}(0)")
         
-        # Section 4: Enhanced color legend with emojis
-        legend_text = "🟢 Idle  •  🔵 To Shelf  •  🟠 To Station  •  🔴 Returning"
-        legend_text_obj = self.ax.text(cols/2, -1.55, legend_text, 
-                                      ha='center', va='center', fontsize=8,
-                                      color='#7F8C8D', style='italic', 
-                                      zorder=11)
-        legend_text_obj.set_path_effects([pe.withStroke(linewidth=0.3, foreground='white')])
+        robot_line = "  |  ".join(status_parts)
+        self.ax.text(cols/2, -1.3, robot_line,
+                    ha='center', va='center',
+                    fontsize=small_font,
+                    color='#000000',
+                    zorder=11)
+        
+        # Performance status
+        if avg_delay < 5:
+            perf_status = "PERFORMANCE: EXCELLENT"
+        elif avg_delay < 10:
+            perf_status = "PERFORMANCE: GOOD"
+        elif avg_delay < 20:
+            perf_status = "PERFORMANCE: MODERATE"
+        else:
+            perf_status = "PERFORMANCE: POOR"
+        
+        self.ax.text(cols/2, -1.6, perf_status,
+                    ha='center', va='center',
+                    fontsize=small_font,
+                    color='#000000',
+                    zorder=11)
+        
+        # Timestamp
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        self.ax.text(cols - 0.2, -1.9, f"Time: {timestamp}",
+                    ha='right', va='center',
+                    fontsize=tiny_font,
+                    color='#666666',
+                    zorder=11)
     
     def close(self):
         """Close the renderer."""
