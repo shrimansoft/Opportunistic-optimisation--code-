@@ -60,9 +60,6 @@ class WarehouseEnv(gym.Env):
 
         # Take action
 
-        # Enhanced plotting with metrics
-        self.warehouse.enhanced_plot("data/frames", self.current_step)
-
         # Simulate the warehouse process (order creation and robot work)
         self.warehouse.order_step()
 
@@ -165,26 +162,17 @@ def main():
         
         # Run shorter simulation for demo
         for step in range(200):
-            # Warehouse operations
-            warehouse.order_step()
-            warehouse.robot_assigner()
-            
-            # Update robots
-            for robot in warehouse.robots:
-                robot.step()
-            
-            # Environment step
+            # Environment step (this handles all warehouse operations internally)
             action = env.action_space.sample()
             next_obs, reward, terminated, truncated, info = env.step(action)
             total_reward += reward
             
-            # Render every step for debugging
-            if step % 1 == 0:  # Changed from % 10 to % 1
-                try:
-                    print(f"Step {step}: Robot positions: {[(r.robot_id, r.current_location, r.target_location) for r in warehouse.robots]}")
-                    env.render()
-                except Exception as e:
-                    print(f"Rendering issue: {e}")
+            # Render every step
+            try:
+                print(f"Step {step}: Robot positions: {[(r.robot_id, r.current_location, r.target_location) for r in warehouse.robots]}")
+                env.render()
+            except Exception as e:
+                print(f"Rendering issue: {e}")
             
             if terminated or truncated:
                 break

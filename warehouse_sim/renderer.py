@@ -100,6 +100,7 @@ class RWareStyleRenderer:
         
         # Clear and reset 
         self.ax.clear()
+        self.ax.set_facecolor(RWARE_COLORS['background'])
         rows, cols = self.warehouse.grid_size
         self.ax.set_xlim(-0.5, cols - 0.5)
         self.ax.set_ylim(-1.5, rows - 0.5)
@@ -122,7 +123,8 @@ class RWareStyleRenderer:
         
         # Handle output
         if mode == "human":
-            plt.draw()
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
             plt.pause(pause_time)
             return None
         elif mode == "rgb_array":
