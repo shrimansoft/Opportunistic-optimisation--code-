@@ -169,14 +169,17 @@ class RWareStyleRenderer:
     
     def _draw_shelves(self):
         """Draw shelves with RWare styling."""
+        rows, cols = self.warehouse.grid_size
+        
         for shelf_idx, shelf_items in enumerate(self.warehouse.shelfs):
             if len(shelf_items) > 0:  # Only draw shelves with items
                 # Convert flat index to grid coordinates
-                x = shelf_idx % 20
-                y = shelf_idx // 20
+                # The shelfs array is indexed by flat coordinates (row-major order)
+                y = shelf_idx // cols  # Row (y-coordinate)
+                x = shelf_idx % cols   # Column (x-coordinate)
                 
-                # Skip highways
-                if self.warehouse._is_highway(x, y):
+                # Skip highways and out-of-bounds positions
+                if x >= cols or y >= rows or self.warehouse._is_highway(x, y):
                     continue
                 
                 # Choose color based on request status
@@ -196,10 +199,22 @@ class RWareStyleRenderer:
                 )
                 self.ax.add_patch(rect)
                 
-                # Add shelf ID with white text
-                self.ax.text(x, y, str(shelf_idx), 
+                # Add shelf information: ID and item count
+                # Top number = shelf_idx (unique shelf identifier: 0-399 for 20x20 grid)
+                # Bottom number = number of items currently stored in this shelf
+                num_items = len(shelf_items)
+                
+                # Display shelf ID (top half) and item count (bottom half)
+                self.ax.text(x, y - 0.15, str(shelf_idx), 
                            ha='center', va='center',
-                           fontsize=7, fontweight='bold',
+                           fontsize=6, fontweight='bold',
+                           color=RWARE_COLORS['text_primary'],
+                           zorder=3)
+                
+                # Display item count with different styling
+                self.ax.text(x, y + 0.15, f"({num_items})", 
+                           ha='center', va='center',
+                           fontsize=6, fontweight='normal',
                            color=RWARE_COLORS['text_primary'],
                            zorder=3)
     
@@ -230,11 +245,12 @@ class RWareStyleRenderer:
     
     def _draw_robots(self):
         """Draw robots with RWare styling."""
+        rows, cols = self.warehouse.grid_size
+        
         for robot in self.warehouse.robots:
             x, y = robot.current_location
             
-            # Bounds check
-            rows, cols = self.warehouse.grid_size
+            # Bounds check - make sure robot is within grid
             if not (0 <= x < cols and 0 <= y < rows):
                 continue
             
@@ -262,14 +278,32 @@ class RWareStyleRenderer:
                         color=RWARE_COLORS['text_primary'],
                         zorder=5)
             
-            # Draw direction indicator (arrow)
-            # For now, point right (will be enhanced in Phase 2)
-            arrow_len = 0.15
-            self.ax.arrow(x, y, arrow_len, 0,
-                         head_width=0.08, head_length=0.06,
-                         fc=RWARE_COLORS['robot_direction'], 
-                         ec=RWARE_COLORS['robot_direction'],
-                         alpha=0.8, zorder=5, linewidth=1.5)
+            # Draw direction indicator (arrow) - point towards target
+            if hasattr(robot, 'target_location') and robot.target_location != robot.current_location:
+                target_x, target_y = robot.target_location
+                # Calculate direction vector
+                dx = target_x - x
+                dy = target_y - y
+                # Normalize to arrow length
+                arrow_len = 0.15
+                if dx != 0 or dy != 0:
+                    length = (dx*dx + dy*dy) ** 0.5
+                    dx = (dx / length) * arrow_len
+                    dy = (dy / length) * arrow_len
+                    
+                    self.ax.arrow(x, y, dx, dy,
+                                 head_width=0.08, head_length=0.06,
+                                 fc=RWARE_COLORS['robot_direction'], 
+                                 ec=RWARE_COLORS['robot_direction'],
+                                 alpha=0.8, zorder=5, linewidth=1.5)
+            else:
+                # Default arrow pointing right if no target
+                arrow_len = 0.15
+                self.ax.arrow(x, y, arrow_len, 0,
+                             head_width=0.08, head_length=0.06,
+                             fc=RWARE_COLORS['robot_direction'], 
+                             ec=RWARE_COLORS['robot_direction'],
+                             alpha=0.8, zorder=5, linewidth=1.5)
     
     def _draw_info_panel(self):
         """Draw information panel at bottom with RWare styling."""

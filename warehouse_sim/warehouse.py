@@ -338,8 +338,18 @@ class Warehouse:
             robot.mode = 0
             robot.time_left = 0
             robot.shelf = None
-            robot.current_location = (0, 0)
-            robot.target_location = (0, 0)
+            # Start robots at a highway position near the goals
+            if self.goals:
+                goal_x, goal_y = self.goals[0]
+                # Find a nearby highway position
+                start_x, start_y = goal_x, max(0, goal_y - 1)
+                if self._is_highway(start_x, start_y):
+                    robot.current_location = (start_x, start_y)
+                else:
+                    robot.current_location = (goal_x, goal_y)  # Fallback to goal position
+            else:
+                robot.current_location = (0, 0)  # Fallback
+            robot.target_location = robot.current_location
             robot.shelf_location = None
 
         # Reset picking station buffers
@@ -450,7 +460,7 @@ class Warehouse:
                         robot.assigne(
                             shelf_to_move,
                             2 * self.distance[shelf_to_move],
-                            (shelf_x + 1, shelf_y + 1),  # Add 1 for robot coordinate system
+                            (shelf_x, shelf_y),  # Use 0-based coordinates consistently
                         )
 
     def enable_interactive_plot(self):

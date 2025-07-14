@@ -178,9 +178,10 @@ def main():
             next_obs, reward, terminated, truncated, info = env.step(action)
             total_reward += reward
             
-            # Render every few steps
-            if step % 10 == 0:
+            # Render every step for debugging
+            if step % 1 == 0:  # Changed from % 10 to % 1
                 try:
+                    print(f"Step {step}: Robot positions: {[(r.robot_id, r.current_location, r.target_location) for r in warehouse.robots]}")
                     env.render()
                 except Exception as e:
                     print(f"Rendering issue: {e}")
