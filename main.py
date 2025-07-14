@@ -125,32 +125,114 @@ class WarehouseEnv(gym.Env):
 
 
 def main():
+    """
+    Main function demonstrating RWare-style warehouse layouts
+    """
     # Set seed for reproducibility
     SEED = 42
     set_seed(SEED)
+    
+    print("RWare-style Warehouse Simulation Demo")
+    print("=" * 50)
 
-    warehouse = Warehouse(seed=SEED)
-
-    # warehouse.enable_interactive_plot()
-
-    env = WarehouseEnv(warehouse)  # Initialize the Gymnasium environment
-
-    for episode in range(2):
-        obs, info = env.reset(seed=SEED + episode)  # Different seed per episode
-        terminated = False
-        truncated = False
+    # Test different RWare layout sizes
+    layout_sizes = ["tiny", "small", "medium", "large"]
+    
+    for i, layout_size in enumerate(layout_sizes):
+        print(f"\n=== Demo {i+1}/4: {layout_size.upper()} warehouse layout ===")
+        
+        # Create warehouse with RWare layout
+        warehouse = Warehouse(
+            seed=SEED + i, 
+            buffer_enabled=True,
+            layout_size=layout_size,
+            column_height=8,
+            difficulty="normal"
+        )
+        
+        print(f"Grid size: {warehouse.grid_size}")
+        print(f"Layout: {layout_size} ({warehouse.shelf_rows}x{warehouse.shelf_columns} shelf blocks)")
+        print(f"Goals: {warehouse.goals}")
+        print(f"Robots: {len(warehouse.robots)}")
+        print(f"Picking stations: {len(warehouse.picking_stations)}")
+        
+        # Create and reset environment
+        env = WarehouseEnv(warehouse)
+        obs, info = env.reset(seed=SEED + i)
+        
+        print(f"Running simulation...")
         total_reward = 0
-
-        while not (terminated or truncated):
-            action = env.action_space.sample()  # Random action
+        
+        # Run shorter simulation for demo
+        for step in range(20):
+            # Warehouse operations
+            warehouse.order_step()
+            warehouse.robot_assigner()
+            
+            # Update robots
+            for robot in warehouse.robots:
+                robot.step()
+            
+            # Environment step
+            action = env.action_space.sample()
             next_obs, reward, terminated, truncated, info = env.step(action)
-            env.render()
             total_reward += reward
-
-        print(f"Episode {episode + 1} finished with total reward: {total_reward}")
-
-    # Keep the plot window open after simulation ends
-    print("Simulation complete. Close the plot window to exit.")
+            
+            # Render every few steps
+            if step % 10 == 0:
+                try:
+                    env.render()
+                except Exception as e:
+                    print(f"Rendering issue: {e}")
+            
+            if terminated or truncated:
+                break
+        
+        print(f"Demo completed - Reward: {total_reward:.2f}, Avg Delay: {warehouse.average_delay():.2f}")
+        
+        # Final visualization
+        try:
+            print(f"Final state visualization for {layout_size} layout...")
+            env.render()
+        except Exception as e:
+            print(f"Final rendering error: {e}")
+    
+    print("\n" + "=" * 50)
+    print("RWare layout demo completed!")
+    print("All standard layout sizes (tiny, small, medium, large) tested.")
+    
+    # Optional: Test custom layout
+    print("\n=== Bonus: Custom Layout Demo ===")
+    custom_layout = """
+..........
+.XX.XX.XX.
+.XX.XX.XX.
+..........
+.XX.XX.XX.
+.XX.XX.XX.
+..........
+....gg....
+"""
+    
+    try:
+        custom_warehouse = Warehouse(
+            seed=SEED + 99,
+            custom_layout=custom_layout.strip(),
+            buffer_enabled=True
+        )
+        
+        print(f"Custom grid size: {custom_warehouse.grid_size}")
+        print(f"Custom goals: {custom_warehouse.goals}")
+        
+        custom_env = WarehouseEnv(custom_warehouse)
+        custom_env.reset()
+        custom_env.render()
+        print("✓ Custom layout demo successful")
+        
+    except Exception as e:
+        print(f"✗ Custom layout error: {e}")
+    
+    print("\nDemo complete. Close plot windows to exit.")
     input("Press Enter to exit...")
 
 
