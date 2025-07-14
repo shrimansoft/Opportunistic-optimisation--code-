@@ -60,9 +60,9 @@ class RWareStyleRenderer:
         
         self.fig, self.ax = plt.subplots(figsize=(fig_width, fig_height))
         
-        # Set grid bounds with padding
+        # Set grid bounds with padding - increase bottom space for info panel
         self.ax.set_xlim(-0.5, cols - 0.5)
-        self.ax.set_ylim(-1.5, rows - 0.5)  # Extra space at bottom for info
+        self.ax.set_ylim(-1.7, rows - 0.5)  # Extra space at bottom for info
         self.ax.set_aspect('equal')
         
         # RWare uses inverted Y (0,0 at top-left)
@@ -103,7 +103,7 @@ class RWareStyleRenderer:
         self.ax.set_facecolor(RWARE_COLORS['background'])
         rows, cols = self.warehouse.grid_size
         self.ax.set_xlim(-0.5, cols - 0.5)
-        self.ax.set_ylim(-1.5, rows - 0.5)
+        self.ax.set_ylim(-1.7, rows - 0.5)
         self.ax.set_aspect('equal')
         self.ax.invert_yaxis()
         self.ax.set_xticks([])
@@ -312,36 +312,9 @@ class RWareStyleRenderer:
             # Add robot ID
             self.ax.text(x, y, str(robot.robot_id),
                         ha='center', va='center', 
-                        fontsize=8, fontweight='bold',
+                        fontsize=12, fontweight='bold',
                         color=RWARE_COLORS['text_primary'],
                         zorder=5)
-            
-            # Draw direction indicator (arrow) - point towards target
-            if hasattr(robot, 'target_location') and robot.target_location != robot.current_location:
-                target_x, target_y = robot.target_location
-                # Calculate direction vector
-                dx = target_x - x
-                dy = target_y - y
-                # Normalize to arrow length
-                arrow_len = 0.15
-                if dx != 0 or dy != 0:
-                    length = (dx*dx + dy*dy) ** 0.5
-                    dx = (dx / length) * arrow_len
-                    dy = (dy / length) * arrow_len
-                    
-                    self.ax.arrow(x, y, dx, dy,
-                                 head_width=0.08, head_length=0.06,
-                                 fc=RWARE_COLORS['robot_direction'], 
-                                 ec=RWARE_COLORS['robot_direction'],
-                                 alpha=0.8, zorder=5, linewidth=1.5)
-            else:
-                # Default arrow pointing right if no target
-                arrow_len = 0.15
-                self.ax.arrow(x, y, arrow_len, 0,
-                             head_width=0.08, head_length=0.06,
-                             fc=RWARE_COLORS['robot_direction'], 
-                             ec=RWARE_COLORS['robot_direction'],
-                             alpha=0.8, zorder=5, linewidth=1.5)
     
     def _draw_info_panel(self):
         """Draw information panel at bottom with RWare styling and robot assignments."""
@@ -355,9 +328,9 @@ class RWareStyleRenderer:
         busy_robots = len([r for r in self.warehouse.robots if not r.available])
         total_robots = len(self.warehouse.robots)
         
-        # Create info panel background
+        # Create info panel background - make it taller to accommodate more text
         panel = FancyBboxPatch(
-            (-0.4, -1.4), cols - 0.2, 0.8,
+            (-0.4, -1.6), cols - 0.2, 1.0,
             boxstyle="round,pad=0.1",
             facecolor=RWARE_COLORS['info_panel'],
             edgecolor=RWARE_COLORS['grid_lines'],
@@ -399,17 +372,17 @@ class RWareStyleRenderer:
             mid = len(robot_info) // 2
             line1 = " | ".join(robot_info[:mid])
             line2 = " | ".join(robot_info[mid:])
-            self.ax.text(cols/2, -1.15, line1, ha='center', va='center', fontsize=8, 
+            self.ax.text(cols/2, -1.20, line1, ha='center', va='center', fontsize=8, 
                         color=RWARE_COLORS['text_secondary'], zorder=11)
-            self.ax.text(cols/2, -1.25, line2, ha='center', va='center', fontsize=8,
+            self.ax.text(cols/2, -1.35, line2, ha='center', va='center', fontsize=8,
                         color=RWARE_COLORS['text_secondary'], zorder=11)
         else:
-            self.ax.text(cols/2, -1.15, robot_text, ha='center', va='center', fontsize=8,
+            self.ax.text(cols/2, -1.20, robot_text, ha='center', va='center', fontsize=8,
                         color=RWARE_COLORS['text_secondary'], zorder=11)
         
         # Color legend
         legend_text = "Robot Colors: Green=IDLE | Blue=→SHELF | Orange=→STATION | Red=→RETURN"
-        self.ax.text(cols/2, -1.35, legend_text, ha='center', va='center', fontsize=8,
+        self.ax.text(cols/2, -1.50, legend_text, ha='center', va='center', fontsize=8,
                     color=RWARE_COLORS['text_secondary'], style='italic', zorder=11)
     
     def close(self):
