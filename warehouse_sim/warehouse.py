@@ -12,6 +12,7 @@ from .robot import Robot
 from .core.enums import (COLLISION_LAYERS, LAYER_AGENTS, LAYER_SHELFS, 
                          RWARE_SIZES, RWARE_DIFFICULTY, Direction)
 from .utils.coordinates import grid_to_flat, flat_to_grid
+from .core.pathfinding import PathfindingCoordinator
 
 matplotlib.use("TkAgg")  # its for intteractive plots.
 
@@ -67,6 +68,9 @@ class Warehouse:
         
         # Initialize robots and picking stations
         self._setup_entities()
+
+        # Initialize collision avoidance system
+        self.pathfinding_coordinator = PathfindingCoordinator(self)
 
         self.fig = None
         self.interactive_mode = False
@@ -257,6 +261,51 @@ class Warehouse:
             
         self.robots = [Robot(self, i+1) for i in range(n_robots)]
 
+    def robot_step_with_collision_avoidance(self):
+        """
+        Execute one step of robot movement with collision avoidance.
+        This should replace individual robot.step() calls.
+        """
+        # Update the collision grid with current robot positions
+        self._recalc_grid()
+        
+        # First, let robots perform their state logic (mode transitions, target setting)
+        # but don't allow actual movement yet
+        for robot in self.robots:
+            # Store current location
+            old_location = robot.current_location
+            
+            # Let robot update its internal state (mode, targets, etc.)
+            # This handles the business logic but we'll override movement
+            if robot.current_location == robot.target_location:
+                if robot.mode == 1:  # Going to shelf
+                    # Update mode and target
+                    robot.target_location = robot.pickingStation.location
+                    robot.mode = 2
+                elif robot.mode == 2:  # Going to station  
+                    robot.target_location = robot.shelf_location
+                    robot.mode = 3
+                    # Handle buffer update
+                    self.buffer_update(robot.shelf, robot.pickingStation)
+                elif robot.mode == 3:  # Returning shelf
+                    robot.mode = 0
+                    robot.available = True
+                    robot.shelf = None
+                    robot.shelf_location = None
+            
+            # Handle time countdown
+            if robot.time_left > 0:
+                robot.time_left -= 1
+            
+            # Restore location - movement will be handled by collision avoidance
+            robot.current_location = old_location
+        
+        # Use the pathfinding coordinator to handle coordinated movements
+        self.pathfinding_coordinator.step()
+        
+        # Update grid again after movements
+        self._recalc_grid()
+
     def _is_highway(self, x: int, y: int) -> bool:
         """Check if given coordinates are on a highway."""
         if not (0 <= x < self.grid_size[1] and 0 <= y < self.grid_size[0]):
@@ -361,22 +410,43 @@ class Warehouse:
         self.itemShelfsBufferSet.clear()
 
         # Reset robots to initial state
-        for robot in self.robots:
+        for i, robot in enumerate(self.robots):
             robot.available = True
             robot.mode = 0
             robot.time_left = 0
             robot.shelf = None
-            # Start robots at a highway position near the goals
+            
+            # Distribute robots at different highway positions to avoid collisions
             if self.goals:
                 goal_x, goal_y = self.goals[0]
-                # Find a nearby highway position
-                start_x, start_y = goal_x, max(0, goal_y - 1)
-                if self._is_highway(start_x, start_y):
-                    robot.current_location = (start_x, start_y)
+                
+                # Find highway positions around the goal area for robot distribution
+                highway_positions = []
+                search_radius = 5
+                
+                for dy in range(-search_radius, search_radius + 1):
+                    for dx in range(-search_radius, search_radius + 1):
+                        x, y = goal_x + dx, goal_y + dy
+                        if (0 <= x < self.grid_size[1] and 0 <= y < self.grid_size[0] and
+                            self._is_highway(x, y)):
+                            highway_positions.append((x, y))
+                
+                # Assign robots to different highway positions
+                if highway_positions:
+                    # Distribute robots across available highway positions
+                    robot_pos = highway_positions[i % len(highway_positions)]
+                    robot.current_location = robot_pos
                 else:
-                    robot.current_location = (goal_x, goal_y)  # Fallback to goal position
+                    # Fallback: spread robots around the goal
+                    offset_x = (i % 3) - 1  # -1, 0, 1
+                    offset_y = (i // 3) - 1  # -1, 0, 1 for groups of 3
+                    start_x = max(0, min(self.grid_size[1] - 1, goal_x + offset_x))
+                    start_y = max(0, min(self.grid_size[0] - 1, goal_y + offset_y))
+                    robot.current_location = (start_x, start_y)
             else:
-                robot.current_location = (0, 0)  # Fallback
+                # Fallback: distribute robots across the grid
+                robot.current_location = (i % self.grid_size[1], i // self.grid_size[1])
+                
             robot.target_location = robot.current_location
             robot.shelf_location = None
 

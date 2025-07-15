@@ -63,9 +63,8 @@ class WarehouseEnv(gym.Env):
         # Simulate the warehouse process (order creation and robot work)
         self.warehouse.order_step()
 
-        # Perform the robots' steps
-        for robot in self.warehouse.robots:
-            robot.step()
+        # Perform robot movements with collision avoidance
+        self.warehouse.robot_step_with_collision_avoidance()
 
         self.warehouse.robot_assigner()
 
