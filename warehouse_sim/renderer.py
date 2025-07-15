@@ -125,28 +125,30 @@ class WarehouseRenderer(pyglet.window.Window):
             rect = Rectangle(x_pos, y_pos, size, size, color=color)
             self.shapes.append(rect)
             
-            # Add shelf ID label (top)
-            center_x = x_pos + size // 2
-            top_y = y_pos + size - 8
-            shelf_label = Label(f"S{shelf_idx}", x=center_x, y=top_y,
-                              anchor_x='center', anchor_y='center',
-                              font_size=8, color=(*COLORS['text'], 255))
+            # Add shelf ID label (top-left corner)
+            shelf_id_x = x_pos + 2
+            shelf_id_y = y_pos + size - 2
+            shelf_label = Label(f"S{shelf_idx}", x=shelf_id_x, y=shelf_id_y,
+                              anchor_x='left', anchor_y='top',
+                              font_size=7, color=(*COLORS['text'], 255))
             self.labels.append(shelf_label)
             
-            # Add item count label (center)
+            # Add item count label (bottom-right corner)
             if num_items > 0:
-                center_y = y_pos + size // 2
-                item_label = Label(str(num_items), x=center_x, y=center_y,
-                                 anchor_x='center', anchor_y='center',
-                                 font_size=10, color=(*COLORS['text'], 255))
+                item_x = x_pos + size - 2
+                item_y = y_pos + 2
+                item_label = Label(str(num_items), x=item_x, y=item_y,
+                                 anchor_x='right', anchor_y='bottom',
+                                 font_size=8, color=(*COLORS['text'], 255))
                 self.labels.append(item_label)
             
-            # Add assigned robot ID label (bottom)
+            # Add assigned robot ID label (top-right corner)
             if assigned_robot:
-                bottom_y = y_pos + 8
-                robot_label = Label(f"R{assigned_robot.robot_id}", x=center_x, y=bottom_y,
-                                  anchor_x='center', anchor_y='center',
-                                  font_size=8, color=(255, 0, 0, 255))
+                robot_x = x_pos +  2
+                robot_y = y_pos +  2
+                robot_label = Label(f"R{assigned_robot.robot_id}", x=robot_x, y=robot_y,
+                                  anchor_x='left', anchor_y='bottom',
+                                  font_size=7, color=(255, 0, 0, 255))
                 self.labels.append(robot_label)
     
     def _draw_robots(self):
