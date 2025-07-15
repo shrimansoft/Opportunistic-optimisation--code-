@@ -184,24 +184,51 @@ class WarehouseRenderer(pyglet.window.Window):
             self.labels.append(label)
     
     def _draw_picking_stations(self):
-        """Draw picking stations."""
-        for station in self.warehouse.picking_stations:
+        """Draw picking stations with buffer information."""
+        for i, station in enumerate(self.warehouse.picking_stations):
             x, y = station.location
             x_pos = x * self.cell_size + 50
             y_pos = (self.rows - 1 - y) * self.cell_size + 50
             
+            # Choose color based on buffer status
+            if station.buffer_enabled:
+            # Green tint if buffer has space, red tint if full
+                if station.buffer_available():
+                    station_color = (0, 120, 0)  # Dark green
+                else:
+                    station_color = (120, 0, 0)  # Dark red
+            else:
+                station_color = COLORS['goal']  # Default gray when buffer disabled
+            
             # Draw station rectangle
             rect = Rectangle(x_pos, y_pos, self.cell_size, self.cell_size, 
-                           color=COLORS['goal'])
+                   color=station_color)
             self.shapes.append(rect)
             
-            # Add 'G' label
+            # Add station number label (S1, S2, etc.)
             center_x = x_pos + self.cell_size // 2
-            center_y = y_pos + self.cell_size // 2
-            label = Label('G', x=center_x, y=center_y,
-                         anchor_x='center', anchor_y='center',
-                         font_size=14, color=(255, 255, 255, 255))
+            center_y = y_pos + self.cell_size // 2 + 6
+            label = Label(f'S{i+1}', x=center_x, y=center_y,
+                 anchor_x='center', anchor_y='center',
+                 font_size=12, color=(255, 255, 255, 255))
             self.labels.append(label)
+            
+            # Add buffer information
+            if station.buffer_enabled:
+                # Buffer status label (current/max)
+                buffer_text = f"{len(station.buffer)}/{station.buffer_size}"
+                buffer_x = center_x
+                buffer_y = center_y - 12
+                buffer_label = Label(buffer_text, x=buffer_x, y=buffer_y- 2,
+                                   anchor_x='center', anchor_y='center',
+                                   font_size=8, color=(255, 255, 255, 255))
+                self.labels.append(buffer_label)
+            else:
+                # Show "NO BUF" when buffer is disabled
+                no_buffer_label = Label('NO BUF', x=center_x, y=center_y - 12,
+                                      anchor_x='center', anchor_y='center',
+                                      font_size=6, color=(255, 255, 255, 255))
+                self.labels.append(no_buffer_label)
     
     def _draw_info(self):
         """Draw information panel."""
@@ -213,9 +240,25 @@ class WarehouseRenderer(pyglet.window.Window):
         # Info text
         info_text = f"Step: {self.warehouse.time} | Orders: {pending}P/{completed}C | Busy Robots: {busy_robots}"
         
+        # Main info
         label = Label(info_text, x=10, y=self.height - 20,
                      font_size=10, color=(*COLORS['text'], 255))
         self.labels.append(label)
+        
+        # Individual picking station information
+        y_offset = 40
+        for i, station in enumerate(self.warehouse.picking_stations):
+            if station.buffer_enabled:
+                buffer_info = f"{len(station.buffer)}/{station.buffer_size}"
+                status = "FULL" if not station.buffer_available() else "OK"
+                station_text = f"Station {i}: Buffer {buffer_info} ({status})"
+            else:
+                station_text = f"Station {i}: Buffer DISABLED"
+            
+            station_label = Label(station_text, x=10, y=self.height - y_offset,
+                                font_size=9, color=(*COLORS['text'], 255))
+            self.labels.append(station_label)
+            y_offset += 20
         
         # Draw all shapes and labels
         for shape in self.shapes:
@@ -295,6 +338,21 @@ def debug_render_warehouse(warehouse: 'Warehouse') -> None:
         loc = f"({robot.current_location[0]},{robot.current_location[1]})"
         shelf = f"S{robot.shelf}" if robot.shelf is not None else "None"
         print(f"  R{robot.robot_id}: {mode} @ {loc}, Shelf: {shelf}")
+    
+    # Picking stations buffer status with individual details
+    print("\nPicking Stations:")
+    for i, station in enumerate(warehouse.picking_stations):
+        loc = f"({station.location[0]},{station.location[1]})"
+        if station.buffer_enabled:
+            buffer_current = len(station.buffer)
+            buffer_max = station.buffer_size
+            buffer_info = f"{buffer_current}/{buffer_max}"
+            status = "FULL" if not station.buffer_available() else "AVAILABLE"
+            print(f"  Station {i}: @ {loc}, Buffer: {buffer_info} ({status})")
+            if buffer_current > 0:
+                print(f"    Buffer contents: {list(station.buffer)}")
+        else:
+            print(f"  Station {i}: @ {loc}, Buffer: DISABLED")
     
     # Orders
     print(f"\nOrders: {len(warehouse.order_buffer)} pending, {len(warehouse.order_compleated)} completed")
