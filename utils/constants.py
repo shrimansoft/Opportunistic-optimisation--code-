@@ -1,6 +1,4 @@
-"""
-Constants and enumerations for the warehouse simulation.
-"""
+"""Constants and enumerations."""
 
 from enum import IntEnum
 
@@ -14,23 +12,10 @@ class RobotMode(IntEnum):
 
 
 class SimulationDefaults:
-    """Default values for simulation parameters."""
-    
-    # Environment defaults
+    """Default simulation parameters."""
     MAX_STEPS = 10000
     DEFAULT_SEED = 42
-    
-    # Rendering defaults
     DEFAULT_PAUSE_TIME = 0.05
-    DEFAULT_RENDER_FREQUENCY = 1
-    
-    # Demo defaults
     DEMO_STEPS = 500
-    
-    # Warehouse defaults
     COLUMN_HEIGHT = 8
-    DEFAULT_DIFFICULTY = "normal"
-    
-    # Layout sizes
     LAYOUT_SIZES = ["tiny", "small", "medium", "large"]
-    DEFAULT_LAYOUT = "medium"

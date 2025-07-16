@@ -20,8 +20,8 @@ def main() -> None:
     # You can customize this to use different configurations:
     # - SimulationConfig.quick_demo() for fast demos
     # - SimulationConfig.comprehensive_demo() for full demos
-    # - SimulationConfig.default() for standard demos
-    config = SimulationConfig.default()
+    # - SimulationConfig() for default configuration
+    config = SimulationConfig()
     
     # Initialize and run the demo
     demo_runner = DemoRunner(config)
