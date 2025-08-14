@@ -47,7 +47,7 @@ class Robot:
             elif self.mode == 2:  # (mode 2 -> 3)
                 self.target_location = self.shelf_location
                 order_count = 0
-                print(">>> ", self.shelf)
+                # print(">>> ", self.shelf)
 
                 # Use intelligent buffer update based on demand probabilities
                 # This replaces the previous random item movements
@@ -64,7 +64,7 @@ class Robot:
                 self.warehouse.order_buffer = list(
                     filter(check_order, self.warehouse.order_buffer)
                 )
-                print("stop>> \t", self.shelf, "order:\t", order_count)
+                # print("stop>> \t", self.shelf, "order:\t", order_count)
                 self.mode = 3
 
             elif self.mode == 3:  # (mode 3 -> 0)
@@ -78,17 +78,17 @@ class Robot:
 
         # Move one step towards the target location
         if self.current_location != self.target_location:
-            print(
-                "robot id \t",
-                self.robot_id,
-                "roblot current location \t",
-                self.current_location,
-            )
+            # print(
+            #     "robot id \t",
+            #     self.robot_id,
+            #     "roblot current location \t",
+            #     self.current_location,
+            # )
 
             # (We assume that target_location is a tuple like (x, y)
             # and current_location is also a tuple (x, y))
             x, y = self.current_location
-            print(self.target_location)
+            # print(self.target_location)
             target_x, target_y = self.target_location
 
             # Move in the x direction

@@ -2,57 +2,333 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .ploter import ploter
+matplotlib.use("TkAgg")  # its for intteractive plots.
+
+from typing import List, Tuple, Optional, Dict
+
+from .order import OrderItem
+from .picking_station import PickingStation
+from .robot import Robot
+from .core.enums import (COLLISION_LAYERS, LAYER_AGENTS, LAYER_SHELFS, 
+                         RWARE_SIZES, RWARE_DIFFICULTY, Direction)
+from .utils.coordinates import grid_to_flat, flat_to_grid
+from .core.pathfinding import PathfindingCoordinator
 
 matplotlib.use("TkAgg")  # its for intteractive plots.
 
 
-from typing import List
+from typing import List, Tuple, Optional, Dict
 
 from .order import OrderItem
 from .picking_station import PickingStation
 from .robot import Robot
 
+# RWare-compatible constants
+_COLLISION_LAYERS = 2
 
 class Warehouse:
-    def __init__(self, seed=None, buffer_enabled=True):
+    def __init__(self, 
+                 seed=None, 
+                 buffer_enabled=True,
+                 # RWare-style parameters
+                 layout_size="medium",  # "tiny", "small", "medium", "large"
+                 column_height=8,       # Standard RWare column height
+                 difficulty="normal",   # "easy", "normal", "hard"
+                 custom_layout=None):   # Custom layout string (overrides other params)
+        """
+        Initialize warehouse with RWare-compatible layout system.
+        
+        Args:
+            seed: Random seed for reproducibility
+            buffer_enabled: Enable picking station buffers
+            layout_size: Standard size ("tiny", "small", "medium", "large")
+            column_height: Height of shelf columns (default: 8)
+            difficulty: Difficulty level affecting request queue size
+            custom_layout: Custom layout string (X=shelf, .=corridor, g=goal)
+        """
         if seed is not None:
             np.random.seed(seed)
 
         self.time = 0
         self.buffer_enabled = buffer_enabled
-        self.probabilities = np.random.dirichlet(np.ones(50), size=1)[
-            0
-        ]  # Assumption from past order distribution.
-        self.distance = np.array([((i % 20) + (i // 20) + 2) for i in range(400)])
+        
+        # Store layout parameters
+        self.layout_size = layout_size
+        self.column_height = column_height
+        self.difficulty = difficulty
+        
+        # Initialize grid system with RWare layout
+        self._setup_rware_layout(layout_size, column_height, custom_layout)
+        
+        # Setup shelves list for RWare compatibility
+        self._setup_shelf_entities()
+        
+        # Calculate warehouse parameters based on grid size
+        self._setup_warehouse_content()
+        
+        # Initialize robots and picking stations
+        self._setup_entities()
 
-        self.stock = np.ones(50) * 48  # 50 types of items with 48 of each type.
-        items = np.repeat(np.arange(0, 50), 48)  # fill the wear house
-        np.random.shuffle(items)
-        shelfs = items.reshape(400, 6)
-        self.shelfs = shelfs.tolist()
-
-        self.order_buffer: List[OrderItem] = []
-        self.order_compleated: List[OrderItem] = []
-        self.itemShelfsBufferSet = set()
-
-        self.picking_stations = [
-            PickingStation(self, (0, 14), buffer_enabled=self.buffer_enabled),
-            PickingStation(self, (0, 10), buffer_enabled=self.buffer_enabled),
-        ]
-        self.robots = [
-            Robot(self, 1),
-            Robot(self, 2),
-            Robot(self, 3),
-            Robot(self, 4),
-            Robot(self, 5),
-            Robot(self, 6),
-            # Robot(self,7), Robot(self,8),Robot(self,9),
-        ]
-        # self.robots = [Robot(self,1)]
+        # Initialize collision avoidance system
+        self.pathfinding_coordinator = PathfindingCoordinator(self)
 
         self.fig = None
         self.interactive_mode = False
+    
+    def _setup_rware_layout(self, layout_size: str, column_height: int, custom_layout: Optional[str] = None):
+        """Setup warehouse layout using RWare standard configurations."""
+        if custom_layout:
+            self._make_layout_from_str(custom_layout)
+        else:
+            if layout_size not in RWARE_SIZES:
+                raise ValueError(f"Layout size '{layout_size}' not supported. Use: {list(RWARE_SIZES.keys())}")
+            
+            shelf_rows, shelf_columns = RWARE_SIZES[layout_size]
+            self._make_layout_from_params(shelf_columns, shelf_rows, column_height)
+    
+    def _make_layout_from_params(self, shelf_columns: int, shelf_rows: int, column_height: int):
+        """Create RWare-style layout from parameters."""
+        assert shelf_columns % 2 == 1, "Only odd number of shelf columns is supported"
+
+        # Calculate grid size using RWare formula
+        self.grid_size = (
+            (column_height + 1) * shelf_rows + 2,  # height
+            (2 + 1) * shelf_columns + 1,           # width
+        )
+        
+        self.shelf_rows = shelf_rows
+        self.shelf_columns = shelf_columns
+        self.column_height = column_height
+        
+        # Initialize collision grid
+        self.grid = np.zeros((COLLISION_LAYERS, *self.grid_size), dtype=np.int32)
+        
+        # Setup goals (delivery locations) at bottom center
+        self.goals = [
+            (self.grid_size[1] // 2 - 1, self.grid_size[0] - 1),
+            (self.grid_size[1] // 2, self.grid_size[0] - 1),
+        ]
+        
+        # Initialize highways
+        self.highways = np.zeros(self.grid_size, dtype=np.uint8)
+        self._setup_rware_highways(column_height)
+    
+    def _setup_rware_highways(self, column_height: int):
+        """Setup highway system using RWare algorithm."""
+        def highway_func(x, y):
+            # Vertical highways every 3 columns
+            is_on_vertical_highway = x % 3 == 0
+            # Horizontal highways every (column_height + 1) rows
+            is_on_horizontal_highway = y % (column_height + 1) == 0
+            # Bottom row for delivery
+            is_on_delivery_row = y == self.grid_size[0] - 1
+            # Queue area near goals
+            is_on_queue = (y > self.grid_size[0] - (column_height + 3)) and (
+                x == self.grid_size[1] // 2 - 1 or x == self.grid_size[1] // 2
+            )
+            
+            return (
+                is_on_vertical_highway or 
+                is_on_horizontal_highway or 
+                is_on_delivery_row or 
+                is_on_queue
+            )
+        
+        for x in range(self.grid_size[1]):
+            for y in range(self.grid_size[0]):
+                self.highways[y, x] = int(highway_func(x, y))
+    
+    def _make_layout_from_str(self, layout: str):
+        """Create layout from custom string (RWare format)."""
+        layout = layout.strip()
+        layout = layout.replace(" ", "")
+        grid_height = layout.count("\n") + 1
+        lines = layout.split("\n")
+        grid_width = len(lines[0])
+        
+        for line in lines:
+            assert len(line) == grid_width, "Layout must be rectangular"
+
+        self.grid_size = (grid_height, grid_width)
+        self.grid = np.zeros((COLLISION_LAYERS, *self.grid_size), dtype=np.int32)
+        self.highways = np.zeros(self.grid_size, dtype=np.uint8)
+        self.goals = []
+
+        for y, line in enumerate(lines):
+            for x, char in enumerate(line):
+                assert char.lower() in "gx.", f"Invalid character '{char}' in layout"
+                if char.lower() == "g":
+                    self.goals.append((x, y))
+                    self.highways[y, x] = 1
+                elif char.lower() == ".":
+                    self.highways[y, x] = 1
+                # 'x' represents shelf locations (non-highway)
+
+        assert len(self.goals) >= 1, "At least one goal is required"
+    
+    def _setup_warehouse_content(self):
+        """Setup warehouse content based on grid size."""
+        # Calculate number of shelf positions (non-highway cells)
+        shelf_positions = []
+        for y in range(self.grid_size[0]):
+            for x in range(self.grid_size[1]):
+                if not self._is_highway(x, y):
+                    shelf_positions.append(y * self.grid_size[1] + x)
+        
+        num_shelf_positions = len(shelf_positions)
+        
+        # Calculate item types to perfectly match shelf capacity
+        # Formula: (item_types × 12 items_per_type) = (shelves × 6 items_per_shelf)
+        # Therefore: item_types = (shelves × 6) ÷ 12 = shelves ÷ 2
+        items_per_type = 12
+        items_per_shelf = 6
+        total_shelf_capacity = num_shelf_positions * items_per_shelf
+        
+        self.n_item_types = total_shelf_capacity // items_per_type
+        
+        # Ensure we have at least 1 item type
+        if self.n_item_types < 1:
+            self.n_item_types = 1
+        
+        # Setup probabilistic distribution for items
+        self.probabilities = np.random.dirichlet(np.ones(self.n_item_types), size=1)[0]
+        
+        # Setup distance calculation (Manhattan distance from goals)
+        self.distance = np.zeros(self.grid_size[0] * self.grid_size[1])
+        goal_x, goal_y = self.goals[0]  # Use first goal as reference
+        
+        for i in range(len(self.distance)):
+            x, y = i % self.grid_size[1], i // self.grid_size[1]
+            # Manhattan distance to goal, with highway bonus
+            base_distance = abs(x - goal_x) + abs(y - goal_y) + 2
+            if self._is_highway(x, y):
+                self.distance[i] = max(1, base_distance * 0.8)  # Highway bonus
+            else:
+                self.distance[i] = base_distance
+        
+        # Initialize stock and shelves
+        # IMPORTANT: Stock must match what's actually placed on shelves
+        items_per_shelf = 6
+        total_items_needed = num_shelf_positions * items_per_shelf
+        
+        # Create items array based on actual shelf capacity
+        items = np.repeat(np.arange(0, self.n_item_types), items_per_type)
+        np.random.shuffle(items)
+        
+        if len(items) < total_items_needed:
+            # Repeat items if we don't have enough
+            items = np.tile(items, (total_items_needed // len(items)) + 1)[:total_items_needed]
+        
+        # Use only the items we can actually place
+        items_to_place = items[:total_items_needed]
+        
+        # Initialize stock based on what's actually being placed
+        self.stock = np.zeros(self.n_item_types)
+        for item_type in items_to_place:
+            self.stock[item_type] += 1
+        
+        shelfs_array = items_to_place.reshape(num_shelf_positions, items_per_shelf)
+        self.shelfs = [[] for _ in range(self.grid_size[0] * self.grid_size[1])]
+        
+        # Place items only in valid shelf positions
+        for i, shelf_pos in enumerate(shelf_positions):
+            self.shelfs[shelf_pos] = shelfs_array[i].tolist()
+        
+        # Initialize order tracking
+        self.order_buffer: List[OrderItem] = []
+        self.order_compleated: List[OrderItem] = []
+        self.itemShelfsBufferSet = set()
+    
+    def _setup_entities(self):
+        """Setup robots and picking stations for the layout."""
+        # Setup picking stations at goal locations
+        self.picking_stations = []
+        for goal_x, goal_y in self.goals:
+            self.picking_stations.append(
+                PickingStation(self, (goal_x, goal_y), buffer_enabled=self.buffer_enabled)
+            )
+        
+        # Setup robots (scale with warehouse size)
+        grid_area = self.grid_size[0] * self.grid_size[1]
+        if grid_area < 100:
+            n_robots = 3
+        elif grid_area < 200:
+            n_robots = 4
+        elif grid_area < 400:
+            n_robots = 6
+        else:
+            n_robots = 8
+            
+        self.robots = [Robot(self, i+1) for i in range(n_robots)]
+
+    def robot_step_with_collision_avoidance(self):
+        """
+        Execute one step of robot movement with collision avoidance.
+        This should replace individual robot.step() calls.
+        """
+        # Update the collision grid with current robot positions
+        self._recalc_grid()
+        
+        # First, let robots perform their state logic (mode transitions, target setting)
+        # but don't allow actual movement yet
+        for robot in self.robots:
+            # Store current location
+            old_location = robot.current_location
+            
+            # Let robot update its internal state (mode, targets, etc.)
+            # This handles the business logic but we'll override movement
+            if robot.current_location == robot.target_location:
+                if robot.mode == 1:  # Going to shelf
+                    # Update mode and target
+                    robot.target_location = robot.pickingStation.location
+                    robot.mode = 2
+                elif robot.mode == 2:  # Going to station  
+                    robot.target_location = robot.shelf_location
+                    robot.mode = 3
+                    # Handle buffer update
+                    self.buffer_update(robot.shelf, robot.pickingStation)
+                elif robot.mode == 3:  # Returning shelf
+                    robot.mode = 0
+                    robot.available = True
+                    robot.shelf = None
+                    robot.shelf_location = None
+            
+            # Handle time countdown
+            if robot.time_left > 0:
+                robot.time_left -= 1
+            
+            # Restore location - movement will be handled by collision avoidance
+            robot.current_location = old_location
+        
+        # Use the pathfinding coordinator to handle coordinated movements
+        self.pathfinding_coordinator.step()
+        
+        # Update grid again after movements
+        self._recalc_grid()
+
+    def _is_highway(self, x: int, y: int) -> bool:
+        """Check if given coordinates are on a highway."""
+        if not (0 <= x < self.grid_size[1] and 0 <= y < self.grid_size[0]):
+            return False
+        return bool(self.highways[y, x])
+
+    def _recalc_grid(self):
+        """Recalculate collision grid based on current entity positions (RWare style)."""
+        # Clear the grid
+        self.grid[:] = 0
+        
+        # Place shelf entities on the shelf layer
+        if hasattr(self, 'shelf_entities'):
+            for shelf in self.shelf_entities:
+                self.grid[LAYER_SHELFS, shelf.y, shelf.x] = shelf.id
+        
+        # Place robots on the agent layer (when robot system is migrated)
+        # For now, this is a placeholder for future robot entity integration
+        for i, robot in enumerate(self.robots):
+            if hasattr(robot, 'current_location'):
+                x, y = robot.current_location
+                if 0 <= x < self.grid_size[1] and 0 <= y < self.grid_size[0]:
+                    self.grid[LAYER_AGENTS, y, x] = i + 1
 
     def buffer_update(self, shelf, picking_station: PickingStation):
         """
@@ -85,14 +361,48 @@ class Warehouse:
         """Reset the warehouse to initial state for a new simulation."""
         self.time = 0
 
-        # Reset stock to initial state
-        self.stock = np.ones(50) * 48  # 50 types of items with 48 of each type
-
-        # Reinitialize shelf layout
-        items = np.repeat(np.arange(0, 50), 48)  # fill the warehouse
+        # Get valid shelf positions
+        shelf_positions = []
+        for y in range(self.grid_size[0]):
+            for x in range(self.grid_size[1]):
+                if not self._is_highway(x, y):
+                    shelf_positions.append(y * self.grid_size[1] + x)
+        
+        # Calculate items based on actual shelf capacity
+        items_per_shelf = 6
+        items_per_type = 12
+        total_items_needed = len(shelf_positions) * items_per_shelf
+        
+        # Create items array - should perfectly match with our formula
+        # (n_item_types × 12) should equal (shelf_positions × 6)
+        items = np.repeat(np.arange(0, self.n_item_types), items_per_type)
+        
+        # Verify the math matches (should be exact)
+        if len(items) != total_items_needed:
+            print(f"Warning: Item count mismatch! Generated {len(items)}, needed {total_items_needed}")
+            # If there's still a mismatch, adjust
+            if len(items) < total_items_needed:
+                extra_items_needed = total_items_needed - len(items)
+                extra_items = np.random.choice(self.n_item_types, extra_items_needed)
+                items = np.concatenate([items, extra_items])
+            else:
+                items = items[:total_items_needed]
+        
         np.random.shuffle(items)
-        shelfs = items.reshape(400, 6)
-        self.shelfs = shelfs.tolist()
+        items_to_place = items[:total_items_needed]
+        
+        # Reset stock based on what's actually being placed
+        self.stock = np.zeros(self.n_item_types)
+        for item_type in items_to_place:
+            self.stock[item_type] += 1
+        
+        # Clear all shelves first
+        self.shelfs = [[] for _ in range(self.grid_size[0] * self.grid_size[1])]
+        
+        # Redistribute items
+        shelfs_array = items_to_place.reshape(len(shelf_positions), items_per_shelf)
+        for i, shelf_pos in enumerate(shelf_positions):
+            self.shelfs[shelf_pos] = shelfs_array[i].tolist()
 
         # Clear order queues
         self.order_buffer.clear()
@@ -100,13 +410,44 @@ class Warehouse:
         self.itemShelfsBufferSet.clear()
 
         # Reset robots to initial state
-        for robot in self.robots:
+        for i, robot in enumerate(self.robots):
             robot.available = True
             robot.mode = 0
             robot.time_left = 0
             robot.shelf = None
-            robot.current_location = (0, 0)
-            robot.target_location = (0, 0)
+            
+            # Distribute robots at different highway positions to avoid collisions
+            if self.goals:
+                goal_x, goal_y = self.goals[0]
+                
+                # Find highway positions around the goal area for robot distribution
+                highway_positions = []
+                search_radius = 5
+                
+                for dy in range(-search_radius, search_radius + 1):
+                    for dx in range(-search_radius, search_radius + 1):
+                        x, y = goal_x + dx, goal_y + dy
+                        if (0 <= x < self.grid_size[1] and 0 <= y < self.grid_size[0] and
+                            self._is_highway(x, y)):
+                            highway_positions.append((x, y))
+                
+                # Assign robots to different highway positions
+                if highway_positions:
+                    # Distribute robots across available highway positions
+                    robot_pos = highway_positions[i % len(highway_positions)]
+                    robot.current_location = robot_pos
+                else:
+                    # Fallback: spread robots around the goal
+                    offset_x = (i % 3) - 1  # -1, 0, 1
+                    offset_y = (i // 3) - 1  # -1, 0, 1 for groups of 3
+                    start_x = max(0, min(self.grid_size[1] - 1, goal_x + offset_x))
+                    start_y = max(0, min(self.grid_size[0] - 1, goal_y + offset_y))
+                    robot.current_location = (start_x, start_y)
+            else:
+                # Fallback: distribute robots across the grid
+                robot.current_location = (i % self.grid_size[1], i // self.grid_size[1])
+                
+            robot.target_location = robot.current_location
             robot.shelf_location = None
 
         # Reset picking station buffers
@@ -114,12 +455,8 @@ class Warehouse:
             station.buffer.clear()
 
     def sample(self):
-        """TODO describe function
-
-        :returns: this will return a item from the self.probabili
-
-        """
-        return int(np.random.choice(np.arange(50), size=1, p=self.probabilities).item())
+        """Sample an item type based on probability distribution."""
+        return int(np.random.choice(np.arange(self.n_item_types), size=1, p=self.probabilities).item())
 
     def available(self):
         # Check both shelf stock and picking station buffers
@@ -141,20 +478,27 @@ class Warehouse:
         return availability
 
     def itemInShelfs(self, n):
-        """TODO describe function
-
-        :param n: item number
-        :returns: a list showing which shelf have how much item n.
-
-        """
+        """Get count of item n in each shelf position."""
         return list(map(lambda x: sum([1 for i in x if i == n]), self.shelfs))
 
     def nearestShelf(self, n):
         availableInShelfs = list(map(bool, self.itemInShelfs(n)))
-        distance = [
-            0 if i in self.itemShelfsBufferSet else self.distance[i]
-            for i in range(len(self.distance))
-        ]
+        
+        # Updated distance calculation to consider highways
+        distance = []
+        for i in range(len(self.distance)):
+            if i in self.itemShelfsBufferSet:
+                distance.append(0)
+            else:
+                # Use RWare-style distance calculation
+                base_distance = self.distance[i]
+                x, y = i % self.grid_size[1], i // self.grid_size[1]
+                # Highway bonus - reduce distance if on highway
+                if self._is_highway(x, y):
+                    distance.append(max(1, base_distance * 0.8))  # 20% reduction for highway locations
+                else:
+                    distance.append(base_distance)
+        
         filteredList = [
             (i, v) for i, (v, l) in enumerate(zip(distance, availableInShelfs)) if l
         ]
@@ -163,8 +507,8 @@ class Warehouse:
 
     def order_step(self):
         self.time += 1
-        if self.time % 1000 == 0:
-            print("Total average_dealy: ", self.average_delay())
+        # if self.time % 1000 == 0:
+        #     print("Total average_dealy: ", self.average_delay())
         if np.random.random() < 0.3:
             available = self.available()
             samples = self.sample()
@@ -188,7 +532,7 @@ class Warehouse:
                             print(
                                 f"Order for item {samples} fulfilled immediately from picking station buffer"
                             )
-                            print("Total stock >> ", self.stock.sum())
+                            # print("Total stock >> ", self.stock.sum())
                             break
 
                 # If item not found in buffer, create regular order
@@ -197,7 +541,7 @@ class Warehouse:
                     self.itemShelfsBufferSet.add(shelf)
                     self.order_buffer.append(OrderItem(samples, self.time, shelf))
                     self.shelfs[shelf].remove(samples)
-                    print("Total stock >> ", self.stock.sum())
+                    # print("Total stock >> ", self.stock.sum())
                     self.stock[samples] -= 1
 
     def robot_assigner(self):
@@ -206,14 +550,15 @@ class Warehouse:
         if len(itemShelfsBufferSet) > 0:
             for robot in self.robots:
                 if robot.available:
-                    # print(itemShelfsBufferSet)
                     if len(self.itemShelfsBufferSet) > 0:
                         shelf_to_move = self.itemShelfsBufferSet.pop()
-                        # self.itemShelfsBufferSet.remove(shelf_to_move)
+                        # Convert flat shelf index to grid coordinates
+                        shelf_x = shelf_to_move % self.grid_size[1]
+                        shelf_y = shelf_to_move // self.grid_size[1]
                         robot.assigne(
                             shelf_to_move,
                             2 * self.distance[shelf_to_move],
-                            (shelf_to_move % 20 + 1, shelf_to_move // 20 + 1),
+                            (shelf_x, shelf_y),  # Use 0-based coordinates consistently
                         )
 
     def enable_interactive_plot(self):
@@ -251,7 +596,9 @@ class Warehouse:
             return delay / order_count
 
     def enhanced_plot(self, frame_dir=None, step_number=None, pause_time=0.1):
-        return ploter(self, frame_dir=None, step_number=None, pause_time=0.1)
+        """Enhanced plotting using the new RWare-style renderer."""
+        from .renderer import render_warehouse
+        return render_warehouse(self, mode="human", pause_time=pause_time)
 
     def set_buffer_enabled(self, enabled):
         """Enable or disable all picking station buffers."""
@@ -265,3 +612,23 @@ class Warehouse:
             self.picking_stations[station_index].set_buffer_enabled(enabled)
         else:
             raise IndexError(f"Station index {station_index} out of range")
+    
+    def _setup_shelf_entities(self):
+        """Setup shelf entities for RWare compatibility."""
+        # Create shelf entities at non-highway positions
+        self.shelf_entities = []
+        shelf_id = 1
+        
+        for y in range(self.grid_size[0]):
+            for x in range(self.grid_size[1]):
+                if not self._is_highway(x, y):
+                    # Create a simple shelf entity (placeholder for full RWare migration)
+                    shelf = type('Shelf', (), {
+                        'id': shelf_id,
+                        'x': x,
+                        'y': y,
+                        'prev_x': None,
+                        'prev_y': None
+                    })()
+                    self.shelf_entities.append(shelf)
+                    shelf_id += 1
